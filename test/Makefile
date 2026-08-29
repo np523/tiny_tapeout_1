@@ -2,11 +2,11 @@
 # See https://docs.cocotb.org/en/stable/quickstart.html for more info
 
 # defaults
-SIM ?= icarus
+SIM ?= verilator
 FST ?= -fst # Use more efficient FST format
 TOPLEVEL_LANG ?= verilog
 SRC_DIR = $(PWD)/../src
-PROJECT_SOURCES = project.v
+PROJECT_SOURCES = ball_painter.v border_painter.v game_logic.v lives_painter.v paddle_painter.v pong.v sound_gen.v synchronizer.v tt_um_robojan_pong_top.v vga_timing.v video_mux.v
 
 ifneq ($(GATES),yes)
 
@@ -34,12 +34,28 @@ endif
 # Allow sharing configuration between design and testbench via `include`:
 COMPILE_ARGS 		+= -I$(SRC_DIR)
 
+# Verilator 5.022+ requires an explicit choice for how delay statements
+# (e.g. tb.v's `#1;`) are handled.
+ifeq ($(SIM),verilator)
+COMPILE_ARGS		+= --timing
+# game_logic.v uses <= inside a couple of always @(*) blocks (functionally
+# fine - Verilator itself notes it executes as blocking regardless - but
+# --timing mode escalates this to a fatal warning). This is exactly what the
+# planned Verilog->SystemVerilog cleanup pass (always_comb) fixes for free;
+# suppressing here rather than touching the unmodified-reference source early.
+COMPILE_ARGS		+= -Wno-COMBDLY
+endif
+
 # Include the testbench sources:
 VERILOG_SOURCES += $(PWD)/tb.v
 TOPLEVEL = tb
 
 # List test modules to run, separated by commas and without the .py suffix:
 COCOTB_TEST_MODULES = test
+# cocotb 1.9.x's Makefile.verilator reads MODULE directly, not
+# COCOTB_TEST_MODULES (a newer-cocotb convention) - set both so this works
+# regardless of installed cocotb major version.
+MODULE = test
 
 # include cocotb's make rules to take care of the simulator setup
 include $(shell cocotb-config --makefiles)/Makefile.sim
