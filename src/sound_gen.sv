@@ -5,25 +5,27 @@ module sound_gen #(
     parameter HIGH_LENGTH = 3,
     parameter LOW_LENGTH = 6
 ) (
-    input clk,
-    input nRst,
-    output sound,
-    input line_pulse,
-    input frame_pulse,
-    input low_beep,
-    input high_beep
+    input logic  clk,
+    input logic  nRst,
+    output logic sound,
+    input logic  line_pulse,
+    input logic  frame_pulse,
+    input logic  low_beep,
+    input logic  high_beep
 );
 
 
-reg [SOUND_DIVIDER:0] sound_counter;
-wire high_beep_wave = sound_counter[SOUND_DIVIDER - 1];
-wire low_beep_wave = sound_counter[SOUND_DIVIDER];
+logic [SOUND_DIVIDER:0] sound_counter;
+logic high_beep_wave;
+assign high_beep_wave = sound_counter[SOUND_DIVIDER - 1];
+logic low_beep_wave;
+assign low_beep_wave = sound_counter[SOUND_DIVIDER];
 
-reg high_en;
-reg low_en;
+logic high_en;
+logic low_en;
 assign sound = ((high_en & high_beep_wave) ^ (low_beep_wave & low_en)) && (high_en || low_en);
 
-always @(posedge line_pulse or negedge nRst)
+always_ff @(posedge line_pulse or negedge nRst)
 begin
     if(!nRst) begin
         sound_counter <= 0;
@@ -32,9 +34,10 @@ begin
     end
 end
 
-reg [2:0] high_counter;
-wire high_at_end = high_counter == HIGH_LENGTH;
-always @(posedge clk or negedge nRst)
+logic [2:0] high_counter;
+logic high_at_end;
+assign high_at_end = high_counter == HIGH_LENGTH;
+always_ff @(posedge clk or negedge nRst)
 begin
     if(!nRst) begin
         high_counter <= 0;
@@ -54,9 +57,10 @@ begin
     end
 end
 
-reg [2:0] low_counter;
-wire low_at_end = low_counter == LOW_LENGTH;
-always @(posedge clk or negedge nRst)
+logic [2:0] low_counter;
+logic low_at_end;
+assign low_at_end = low_counter == LOW_LENGTH;
+always_ff @(posedge clk or negedge nRst)
 begin
     if(!nRst) begin
         low_counter <= 0;

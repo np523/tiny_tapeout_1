@@ -30,32 +30,32 @@ module pong
     parameter INITIAL_VEL_X = 4'sd0,
     parameter INITIAL_VEL_Y = 4'sd2
 )(
-    input clk,
-    input nRst,
-    input en,
-    input btn_p1_left_pin,
-    input btn_p1_right_pin,
-    input btn_p1_select_pin,
-    input btn_p2_left_pin,
-    input btn_p2_right_pin,
-    input btn_p2_select_pin,
-    output [1:0] vga_r,
-    output [1:0] vga_g,
-    output [1:0] vga_b,
-    output vga_hsync,
-    output vga_vsync,
-    output vblank,
-    output hblank,
-    output sound_out
+    input logic clk,
+    input logic nRst,
+    input logic en,
+    input logic btn_p1_left_pin,
+    input logic btn_p1_right_pin,
+    input logic btn_p1_select_pin,
+    input logic btn_p2_left_pin,
+    input logic btn_p2_right_pin,
+    input logic btn_p2_select_pin,
+    output logic  [1:0] vga_r,
+    output logic  [1:0] vga_g,
+    output logic  [1:0] vga_b,
+    output logic  vga_hsync,
+    output logic  vga_vsync,
+    output logic  vblank,
+    output logic  hblank,
+    output logic  sound_out
     );
 
     // Synchronize the inputs
-    wire p1_btn_left;
-    wire p1_btn_right;
-    wire p1_btn_select;
-    wire p2_btn_left;
-    wire p2_btn_right;
-    wire p2_btn_select;
+    logic p1_btn_left;
+    logic p1_btn_right;
+    logic p1_btn_select;
+    logic p2_btn_left;
+    logic p2_btn_right;
+    logic p2_btn_select;
     synchronizer p1_btn_left_sync(clk, nRst, btn_p1_left_pin, p1_btn_left);
     synchronizer p1_btn_right_sync(clk, nRst, btn_p1_right_pin, p1_btn_right);
     synchronizer p1_btn_select_sync(clk, nRst, btn_p1_select_pin, p1_btn_select);
@@ -64,13 +64,13 @@ module pong
     synchronizer p2_btn_select_sync(clk, nRst, btn_p2_select_pin, p2_btn_select);
     
     // Generate the VGA timing
-    wire vga_hactive;
-    wire [9:0] vga_hpos;
-    wire vga_vactive;
-    wire [8:0] vga_vpos;
-    wire vga_line_pulse;
-    wire vga_frame_pulse;
-    wire vga_active;
+    logic vga_hactive;
+    logic [9:0] vga_hpos;
+    logic vga_vactive;
+    logic [8:0] vga_vpos;
+    logic vga_line_pulse;
+    logic vga_frame_pulse;
+    logic vga_active;
     vga_timing vga_timing(
         .clk(clk),
         .nRst(nRst),
@@ -88,19 +88,19 @@ module pong
     assign hblank = !vga_hactive;
     
     // Video mux
-    wire [5:0] video_out;
-    wire [5:0] border_color;
-    wire draw_border;
-    wire [5:0] ball_color;
-    wire draw_ball;
-    wire [5:0] p1_paddle_color;
-    wire draw_p1_paddle;
-    wire [5:0] p2_paddle_color;
-    wire draw_p2_paddle;
-    wire [5:0] p1_lives_color;
-    wire draw_p1_lives;
-    wire [5:0] p2_lives_color;
-    wire draw_p2_lives;
+    logic [5:0] video_out;
+    logic [5:0] border_color;
+    logic draw_border;
+    logic [5:0] ball_color;
+    logic draw_ball;
+    logic [5:0] p1_paddle_color;
+    logic draw_p1_paddle;
+    logic [5:0] p2_paddle_color;
+    logic draw_p2_paddle;
+    logic [5:0] p1_lives_color;
+    logic draw_p1_lives;
+    logic [5:0] p2_lives_color;
+    logic draw_p2_lives;
     video_mux video_mux(
         .out(video_out),
         .in_frame(vga_active),
@@ -133,12 +133,12 @@ module pong
     );
     
     // Ball painter
-    wire [9:0]ball_x;
-    wire [8:0]ball_y;
-    wire ball_top_en;
-    wire ball_left_en;
-    wire ball_bottom_en;
-    wire ball_right_en;
+    logic [9:0]ball_x;
+    logic [8:0]ball_y;
+    logic ball_top_en;
+    logic ball_left_en;
+    logic ball_bottom_en;
+    logic ball_right_en;
     ball_painter ball_painter(
         .clk(clk),
         .nRst(nRst),
@@ -157,8 +157,8 @@ module pong
     );
     
     // Paddle painter
-    wire [9:0] p1_paddle_x;
-    wire [2:0] p1_paddle_segment;
+    logic [9:0] p1_paddle_x;
+    logic [2:0] p1_paddle_segment;
     paddle_painter #(
         .PADDLE_Y(9'd456),
         .PADDLE_SEGMENT_WIDTH(PADDLE_SEGMENT_WIDTH),
@@ -173,8 +173,8 @@ module pong
         .vpos(vga_vpos),
         .paddle_segment(p1_paddle_segment)
     );
-    wire [9:0] p2_paddle_x;
-    wire [2:0] p2_paddle_segment;
+    logic [9:0] p2_paddle_x;
+    logic [2:0] p2_paddle_segment;
     paddle_painter #(
         .PADDLE_Y('d16),
         .PADDLE_SEGMENT_WIDTH(PADDLE_SEGMENT_WIDTH),
@@ -191,15 +191,15 @@ module pong
     );
     
     // Collisions
-    wire wall_collision = draw_border && draw_ball;
-    wire p1_paddle_collision = draw_p1_paddle && draw_ball;
-    wire p2_paddle_collision = draw_p2_paddle && draw_ball;
-    wire paddle_collision = p1_paddle_collision || p2_paddle_collision;
-    wire [2:0] paddle_segment = p1_paddle_collision ? p1_paddle_segment : p2_paddle_segment;
-    wire collision = wall_collision || paddle_collision;
+    logic wall_collision = draw_border && draw_ball;
+    logic p1_paddle_collision = draw_p1_paddle && draw_ball;
+    logic p2_paddle_collision = draw_p2_paddle && draw_ball;
+    logic paddle_collision = p1_paddle_collision || p2_paddle_collision;
+    logic [2:0] paddle_segment = p1_paddle_collision ? p1_paddle_segment : p2_paddle_segment;
+    logic collision = wall_collision || paddle_collision;
 
     // Lives painter
-    wire [1:0] p1_lives;
+    logic [1:0] p1_lives;
     lives_painter #(
         .LIVES_Y(474)
     ) p1_lives_painter(
@@ -212,7 +212,7 @@ module pong
         .vpos(vga_vpos),
         .lives(p1_lives)
     );
-    wire [1:0] p2_lives;
+    logic [1:0] p2_lives;
     lives_painter #(
         .LIVES_Y(2)
     ) p2_lives_painter(
@@ -238,8 +238,8 @@ module pong
     );
     
     // Game logic
-    wire [0:0] game_state;
-    wire ball_out_of_bounds;
+    logic [0:0] game_state;
+    logic ball_out_of_bounds;
     game_logic #(
         .PADDLE_WIDTH(PADDLE_SEGMENT_WIDTH * PADDLE_NUM_SEGMENTS),
         .BORDER_WIDTH(BORDER_WIDTH),

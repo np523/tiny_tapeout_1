@@ -8,30 +8,35 @@ module lives_painter #(
     parameter LIVES_Y =  9'd474,
     parameter SPACING = 16
 ) (
-    input clk,
-    input nRst,
-    output in_lives,
-    output [5:0] color,
-    input hactive,
-    input [9:0] hpos,
-    input [8:0] vpos,
-    input [1:0] lives
+    input logic clk,
+    input logic nRst,
+    output logic in_lives,
+    output logic [5:0] color,
+    input logic hactive,
+    input logic[9:0] hpos,
+    input logic[8:0] vpos,
+    input logic[1:0] lives
     );
     
-    reg [4:0] lives_x;
-    reg [1:0] lives_cntr;
-    reg in_lives_row;
-    reg in_lives_y;
-    wire at_x_end = lives_x == 0;
-    wire at_lives_end = lives_cntr == 0;
-    wire at_lives_y_start = vpos == LIVES_Y;
-    wire at_lives_y_end = vpos == LIVES_Y + LIVES_HEIGHT - 1;
+    logic [4:0] lives_x;
+    logic [1:0] lives_cntr;
+    logic in_lives_row;
+    logic in_lives_y;
+    logic at_x_end;
+    logic at_lives_end;
+    logic at_lives_y_start;
+    logic at_lives_y_end;
+    
+    assign at_x_end = (lives_x == 0);
+    assign at_lives_end = (lives_cntr == 0);
+    assign at_lives_y_start = (vpos == LIVES_Y);
+    assign at_lives_y_end = (vpos == LIVES_Y + LIVES_HEIGHT - 1);
 
     assign in_lives = in_lives_row && in_lives_y;
     assign color = LIVES_COLOR;
 
     // horizontal counters
-    always @(posedge clk or negedge nRst)
+    always_ff @(posedge clk or negedge nRst)
     begin
         if(!nRst) begin
             lives_x <= SPACING - 1;
@@ -54,7 +59,7 @@ module lives_painter #(
         end
     end
 
-    always @(posedge clk or negedge nRst)
+    always_ff @(posedge clk or negedge nRst)
     begin
         if(!nRst) begin
             in_lives_y <= 0;

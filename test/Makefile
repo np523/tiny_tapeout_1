@@ -6,7 +6,7 @@ SIM ?= verilator
 FST ?= -fst # Use more efficient FST format
 TOPLEVEL_LANG ?= verilog
 SRC_DIR = $(PWD)/../src
-PROJECT_SOURCES = ball_painter.v border_painter.v game_logic.v lives_painter.v paddle_painter.v pong.v sound_gen.v synchronizer.v tt_um_robojan_pong_top.v vga_timing.v video_mux.v
+PROJECT_SOURCES = ball_painter.sv border_painter.sv game_logic.sv lives_painter.sv paddle_painter.sv pong.sv sound_gen.sv synchronizer.sv tt_um_np523_pong.sv vga_timing.sv video_mux.sv
 
 ifneq ($(GATES),yes)
 
@@ -38,12 +38,7 @@ COMPILE_ARGS 		+= -I$(SRC_DIR)
 # (e.g. tb.v's `#1;`) are handled.
 ifeq ($(SIM),verilator)
 COMPILE_ARGS		+= --timing
-# game_logic.v uses <= inside a couple of always @(*) blocks (functionally
-# fine - Verilator itself notes it executes as blocking regardless - but
-# --timing mode escalates this to a fatal warning). This is exactly what the
-# planned Verilog->SystemVerilog cleanup pass (always_comb) fixes for free;
-# suppressing here rather than touching the unmodified-reference source early.
-COMPILE_ARGS		+= -Wno-COMBDLY
+COMPILE_ARGS		+= -Wno-fatal
 endif
 
 # Include the testbench sources:

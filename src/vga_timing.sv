@@ -21,23 +21,24 @@
 
 
 module vga_timing(
-    input clk,
-    input nRst,
-    output reg hsync,
-    output reg hactive,
-    output [9:0] hpos,
-    output reg vsync,
-    output reg vactive,
-    output [8:0] vpos,
-    output active,
-    output line_pulse,
-    output frame_pulse
+    input logic clk,
+    input logic nRst,
+    output logic hsync,
+    output logic hactive,
+    output logic [9:0] hpos,
+    output logic vsync,
+    output logic vactive,
+    output logic [8:0] vpos,
+    output logic active,
+    output logic line_pulse,
+    output logic frame_pulse
     );
     
     
-    reg [9:0] hor_counter;
-    wire hor_at_end = hor_counter == 10'd799;
-    always @(posedge clk or negedge nRst)
+    logic [9:0] hor_counter;
+    logic hor_at_end;
+    assign hor_at_end = hor_counter == 10'd799;
+    always_ff @(posedge clk or negedge nRst)
     begin
         if(!nRst) begin
             hor_counter <= 10'b0;
@@ -50,9 +51,10 @@ module vga_timing(
         end
     end
     
-    reg [9:0] vert_counter;
-    wire vert_at_end = vert_counter == 10'd524;
-    always @(posedge clk or negedge nRst)
+    logic [9:0] vert_counter;
+    logic vert_at_end;
+    assign vert_at_end = vert_counter == 10'd524;
+    always_ff @(posedge clk or negedge nRst)
     begin
         if(!nRst) begin
             vert_counter <= 10'b0;
@@ -67,9 +69,11 @@ module vga_timing(
         end
     end
 
-    wire hsync_start = hor_counter == 10'd656;
-    wire hsync_end = hor_counter == 10'd752;
-    always @(posedge clk or negedge nRst)
+    logic hsync_start;
+    assign hsync_start = hor_counter == 10'd656;
+    logic hsync_end;
+    assign hsync_end = hor_counter == 10'd752;
+    always_ff @(posedge clk or negedge nRst)
     begin
         if(!nRst) begin
             hsync <= 1'b1;
@@ -82,8 +86,9 @@ module vga_timing(
         end
     end
 
-    wire hactive_end = hor_counter == 10'd639;
-    always @(posedge clk or negedge nRst)
+    logic hactive_end;
+    assign hactive_end = hor_counter == 10'd639;
+    always_ff @(posedge clk or negedge nRst)
     begin
         if(!nRst) begin
             hactive <= 1'b1;
@@ -96,9 +101,11 @@ module vga_timing(
         end
     end
 
-    wire vsync_start = vert_counter == 10'd490;
-    wire vsync_end = vert_counter == 10'd492;
-    always @(posedge clk or negedge nRst)
+    logic vsync_start;
+    assign vsync_start = vert_counter == 10'd490;
+    logic vsync_end;
+    assign vsync_end = vert_counter == 10'd492;
+    always_ff @(posedge clk or negedge nRst)
     begin
         if(!nRst) begin
             vsync <= 1'b1;
@@ -111,8 +118,9 @@ module vga_timing(
         end
     end
 
-    wire vactive_end = vert_counter == 10'd479;
-    always @(posedge clk or negedge nRst)
+    logic vactive_end;
+    assign vactive_end = vert_counter == 10'd479;
+    always_ff @(posedge clk or negedge nRst)
     begin
         if(!nRst) begin
             vactive <= 1'b1;

@@ -28,26 +28,29 @@ module paddle_painter #(
     parameter PADDLE_HEIGHT = 9'd8,
     parameter PADDLE_Y =  9'd456
 ) (
-    input clk,
-    input nRst,
-    output in_paddle,
-    output [5:0] color,
-    input [9:0] hpos,
-    input [8:0] vpos,
-    input [9:0] x,
-    output [2:0] paddle_segment
+    input logic clk,
+    input logic nRst,
+    output logic in_paddle,
+    output logic [5:0] color,
+    input logic [9:0] hpos,
+    input logic [8:0] vpos,
+    input logic [9:0] x,
+    output logic [2:0] paddle_segment
     );
     
-    reg in_paddle_x;
-    reg [2:0] paddle_segment_x;
-    reg [2:0] paddle_segment_cnt;
-    wire paddle_x_start = hpos == x;
-    wire paddle_segment_end = paddle_segment_x == PADDLE_SEGMENT_WIDTH - 1;
-    wire paddle_x_end = paddle_segment_end && paddle_segment_cnt == PADDLE_NUM_SEGMENTS - 1;
+    logic in_paddle_x;
+    logic [2:0] paddle_segment_x;
+    logic [2:0] paddle_segment_cnt;
+    logic paddle_x_start;
+    assign paddle_x_start = hpos == x;
+    logic paddle_segment_end;
+    assign paddle_segment_end = paddle_segment_x == PADDLE_SEGMENT_WIDTH - 1;
+    logic paddle_x_end;
+    assign paddle_x_end = paddle_segment_end && paddle_segment_cnt == PADDLE_NUM_SEGMENTS - 1;
     assign paddle_segment = paddle_segment_cnt;
 
     // Paddle segment position counter
-    always @(posedge clk or negedge nRst)
+    always_ff @(posedge clk or negedge nRst)
     begin
         if(!nRst) begin
             paddle_segment_x <= 0;
@@ -61,7 +64,7 @@ module paddle_painter #(
     end
 
     // Paddle segment counter
-    always @(posedge clk or negedge nRst)
+    always_ff @(posedge clk or negedge nRst)
     begin
         if(!nRst) begin
             paddle_segment_cnt <= 0;
@@ -75,7 +78,7 @@ module paddle_painter #(
     end
 
     // Are we in the paddle?
-    always @(posedge clk or negedge nRst)
+    always_ff @(posedge clk or negedge nRst)
     begin
         if(!nRst) begin
             in_paddle_x <= 0;
@@ -88,10 +91,12 @@ module paddle_painter #(
         end
     end
 
-    reg in_paddle_y;
-    wire in_paddle_y_start = vpos == PADDLE_Y;
-    wire in_paddle_y_end = vpos == PADDLE_Y + PADDLE_HEIGHT;
-    always @(posedge clk or negedge nRst)
+    logic in_paddle_y;
+    logic in_paddle_y_start;
+    assign in_paddle_y_start = vpos == PADDLE_Y;
+    logic in_paddle_y_end;
+    assign in_paddle_y_end = vpos == PADDLE_Y + PADDLE_HEIGHT;
+    always_ff @(posedge clk or negedge nRst)
     begin
         if(!nRst) begin
             in_paddle_y <= 0;

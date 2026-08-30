@@ -31,41 +31,48 @@ module game_logic
     parameter INITIAL_PADDLE_X = 10'd320 - PADDLE_WIDTH / 2 - 1,
     parameter BORDER_WIDTH = 8
 )(
-    input clk,
-    input nRst,
-    output [9:0] ball_x,
-    output [8:0] ball_y,
-    output [9:0] p1_paddle_x,
-    output [9:0] p2_paddle_x,
-    output reg [1:0] p1_lives,
-    output reg [1:0] p2_lives,
-    input frame_pulse,
-    input p1_btn_action,
-    input p1_btn_left,
-    input p1_btn_right,
-    input p2_btn_action,
-    input p2_btn_left,
-    input p2_btn_right,
-    input collision,
-    input paddle_collision,
-    input [2:0] paddle_segment,
-    input ball_top_col,
-    input ball_left_col,
-    input ball_bottom_col,
-    input ball_right_col,
-    output reg [0:0] game_state,
-    output wire ball_out_of_bounds
+    input logic  clk,
+    input logic  nRst,
+    output logic   [9:0] ball_x,
+    output logic   [8:0] ball_y,
+    output logic   [9:0] p1_paddle_x,
+    output logic   [9:0] p2_paddle_x,
+    output logic [1:0] p1_lives,
+    output logic [1:0] p2_lives,
+    input logic  frame_pulse,
+    input logic  p1_btn_action,
+    input logic  p1_btn_left,
+    input logic  p1_btn_right,
+    input logic  p2_btn_action,
+    input logic  p2_btn_left,
+    input logic  p2_btn_right,
+    input logic  collision,
+    input logic  paddle_collision,
+    input logic  [2:0] paddle_segment,
+    input logic  ball_top_col,
+    input logic  ball_left_col,
+    input logic  ball_bottom_col,
+    input logic  ball_right_col,
+    output logic [0:0] game_state,
+    output logic ball_out_of_bounds
 );
 
-    wire p1_paddle_is_at_left_limit;
-    wire p1_paddle_is_at_right_limit;
-    wire p2_paddle_is_at_left_limit;
-    wire p2_paddle_is_at_right_limit;
-    wire p1_out_of_lives = p1_lives == 2'd0;
-    wire p2_out_of_lives = p2_lives == 2'd0;
-    wire end_of_game = (p1_out_of_lives || p2_out_of_lives) && ball_out_of_bounds;
-    wire ball_out_of_bounds_p1;
-    wire ball_out_of_bounds_p2;
+    logic p1_paddle_is_at_left_limit;
+    logic p1_paddle_is_at_right_limit;
+    logic p2_paddle_is_at_left_limit;
+    logic p2_paddle_is_at_right_limit;
+    logic p1_out_of_lives;
+    logic p2_out_of_lives;
+    logic end_of_game;
+    logic ball_out_of_bounds_p1;
+    logic ball_out_of_bounds_p2;
+    // NB: `logic x = expr` is a one-time initializer in SV (like `initial`),
+    // not a continuous assignment like Verilog's `wire x = expr` was -
+    // these three must stay as `assign` to keep tracking p1_lives/p2_lives/
+    // ball_out_of_bounds for the whole game, not just at time 0.
+    assign p1_out_of_lives = p1_lives == 2'd0;
+    assign p2_out_of_lives = p2_lives == 2'd0;
+    assign end_of_game = (p1_out_of_lives || p2_out_of_lives) && ball_out_of_bounds;
 
     /////////////////////////////////////////////
     // Game state
@@ -108,12 +115,12 @@ module game_logic
     /////////////////////////////////////////////
     // Latched collisions
     // Collisions are evaluated at the end of the frame but we keep track of collisions during the drawing.
-    reg latched_ball_top_collision;
-    reg latched_ball_bottom_collision;
-    reg latched_ball_left_collision;
-    reg latched_ball_right_collision;
-    reg latched_paddle_collision;
-    reg [2:0] latched_paddle_segment;
+    logic latched_ball_top_collision;
+    logic latched_ball_bottom_collision;
+    logic latched_ball_left_collision;
+    logic latched_ball_right_collision;
+    logic latched_paddle_collision;
+    logic [2:0] latched_paddle_segment;
     always @(posedge clk or negedge nRst)
     begin
         if(!nRst) begin
@@ -144,42 +151,49 @@ module game_logic
         end
     end
 
-    reg signed [3:0] velocity_x;
-    reg signed [3:0] velocity_y;
-    reg signed [11:0] ball_state_x;
-    reg signed [10:0] ball_state_y;
+    logic signed [3:0] velocity_x;
+    logic signed [3:0] velocity_y;
+    logic signed [11:0] ball_state_x;
+    logic signed [10:0] ball_state_y;
     assign ball_out_of_bounds_p2 = ball_state_y[10:1] >= 9'd500;
     assign ball_out_of_bounds_p1 = ball_state_y[10:1] >= 9'd488 && !ball_out_of_bounds_p2;
     assign ball_out_of_bounds = ball_out_of_bounds_p1 || ball_out_of_bounds_p2;
 
-    reg signed [3:0] next_velocity_x;
-    reg signed [3:0] next_velocity_y;
-    always @(*)
-    begin
+    logic signed [3:0] next_velocity_x;
+    logic signed [3:0] next_velocity_y;
+    always_comb begin
         case(game_state)
             STATE_START: begin
                 if (p1_btn_action || p2_btn_action) begin
-                    next_velocity_x <= INITIAL_VEL_X;
-                    next_velocity_y <= INITIAL_VEL_Y;
+                    next_velocity_x = INITIAL_VEL_X;
+                    next_velocity_y = INITIAL_VEL_Y;
                 end else begin
-                    next_velocity_x <= 0;
-                    next_velocity_y <= 0;
+                    next_velocity_x = 0;
+                    next_velocity_y = 0;
                 end
             end
             STATE_PLAYING: begin
                 if(ball_out_of_bounds) begin
-                    next_velocity_x <= INITIAL_VEL_X;
-                    next_velocity_y <= INITIAL_VEL_Y;
+                    next_velocity_x = INITIAL_VEL_X;
+                    next_velocity_y = INITIAL_VEL_Y;
                 end else if (latched_paddle_collision) begin
                     case(latched_paddle_segment)
-                        3'b000: next_velocity_x <= -3;
-                        3'b001: next_velocity_x <= -2;
-                        3'b010: next_velocity_x <= -1;
-                        3'b011: next_velocity_x <= 1;
-                        3'b100: next_velocity_x <= 2;
-                        3'b101: next_velocity_x <= 3;
+                        3'b000: next_velocity_x = -3;
+                        3'b001: next_velocity_x = -2;
+                        3'b010: next_velocity_x = -1;
+                        3'b011: next_velocity_x = 1;
+                        3'b100: next_velocity_x = 2;
+                        3'b101: next_velocity_x = 3;
+                        // latched_paddle_segment is 3 bits (8 values) but only
+                        // 6 segments exist (PADDLE_NUM_SEGMENTS=6 in pong.sv,
+                        // paddle_painter.v never counts past segment 5) - 110
+                        // and 111 are unreachable in practice, but always_comb
+                        // requires every branch assigned or Yosys infers a
+                        // latch. Same "no change" fallback as the rest of
+                        // this block uses when nothing else matches.
+                        default: next_velocity_x = velocity_x;
                     endcase
-                    next_velocity_y <= -velocity_y;
+                    next_velocity_y = -velocity_y;
                 end else if (
                     (!latched_ball_left_collision &&  latched_ball_top_collision && !latched_ball_right_collision && !latched_ball_bottom_collision) || // Top collisions
                     ( latched_ball_left_collision &&  latched_ball_top_collision &&  latched_ball_right_collision && !latched_ball_bottom_collision) ||
@@ -190,8 +204,8 @@ module game_logic
                     ( latched_ball_left_collision && !latched_ball_top_collision && !latched_ball_right_collision &&  latched_ball_bottom_collision) ||
                     (!latched_ball_left_collision && !latched_ball_top_collision &&  latched_ball_right_collision &&  latched_ball_bottom_collision)
                 ) begin
-                    next_velocity_x <= velocity_x;
-                    next_velocity_y <= -velocity_y;
+                    next_velocity_x = velocity_x;
+                    next_velocity_y = -velocity_y;
                 end else if (
                     // This contains duplicates from the top and bottom collisions, This is fine and will be optimized away.
                     (!latched_ball_left_collision && !latched_ball_top_collision &&  latched_ball_right_collision && !latched_ball_bottom_collision) || // Right collisions
@@ -203,17 +217,17 @@ module game_logic
                     ( latched_ball_left_collision && !latched_ball_top_collision && !latched_ball_right_collision &&  latched_ball_bottom_collision) ||
                     ( latched_ball_left_collision &&  latched_ball_top_collision && !latched_ball_right_collision && !latched_ball_bottom_collision)
                 ) begin
-                    next_velocity_x <= -velocity_x;
-                    next_velocity_y <= velocity_y;
+                    next_velocity_x = -velocity_x;
+                    next_velocity_y = velocity_y;
                 end else begin
-                    next_velocity_x <= velocity_x;
-                    next_velocity_y <= velocity_y;
+                    next_velocity_x = velocity_x;
+                    next_velocity_y = velocity_y;
                 end
             end
         endcase
     end
 
-    always @(posedge clk or negedge nRst)
+    always_ff @(posedge clk or negedge nRst)
     begin
         if(!nRst) begin
             ball_state_x <= {INITIAL_BALL_X, 1'b0};
@@ -241,11 +255,11 @@ module game_logic
     /////////////////////////////////////////////
     // Paddle logic
     /////////////////////////////////////////////    
-    reg [9:0] p1_paddle_state_x;
+    logic [9:0] p1_paddle_state_x;
     // Ignore the bottom bit to account for the velocity of the paddle
     assign p1_paddle_is_at_left_limit = p1_paddle_state_x[9:1] == (BORDER_WIDTH >> 1) - 1;
     assign p1_paddle_is_at_right_limit = p1_paddle_state_x[9:1] == (640 - BORDER_WIDTH - PADDLE_WIDTH) >> 1;
-    always @(posedge clk or negedge nRst)
+    always_ff @(posedge clk or negedge nRst)
     begin
         if(!nRst) begin
             p1_paddle_state_x <= INITIAL_PADDLE_X;
@@ -264,11 +278,11 @@ module game_logic
     
     assign p1_paddle_x = p1_paddle_state_x;
 
-    reg [9:0] p2_paddle_state_x;
+    logic [9:0] p2_paddle_state_x;
     // Ignore the bottom bit to account for the velocity of the paddle
     assign p2_paddle_is_at_left_limit = p2_paddle_state_x[9:1] == BORDER_WIDTH >> 1;
     assign p2_paddle_is_at_right_limit = p2_paddle_state_x[9:1] == (640 - BORDER_WIDTH - PADDLE_WIDTH) >> 1;
-    always @(posedge clk or negedge nRst)
+    always_ff @(posedge clk or negedge nRst)
     begin
         if(!nRst) begin
             p2_paddle_state_x <= INITIAL_PADDLE_X;

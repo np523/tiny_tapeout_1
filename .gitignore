@@ -1,6 +1,8 @@
 .DS_Store
 .idea
 .venv
+ttsetup
+tt
 *.vcd
 *.fst
 *.fst.hier

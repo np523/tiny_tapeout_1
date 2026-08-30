@@ -21,41 +21,40 @@
 
 
 module video_mux(
-    output reg [5:0] out,
-    input in_frame,
-    input [5:0] background,
-    input [5:0] border,
-    input border_en,
-    input [5:0] ball,
-    input ball_en,
-    input [5:0] p1_paddle,
-    input p1_paddle_en,
-    input [5:0] p1_lives,
-    input p1_lives_en,
-    input [5:0] p2_paddle,
-    input p2_paddle_en,
-    input [5:0] p2_lives,
-    input p2_lives_en
+    output logic [5:0] out,
+    input logic in_frame,
+    input logic [5:0] background,
+    input logic [5:0] border,
+    input logic border_en,
+    input logic [5:0] ball,
+    input logic ball_en,
+    input logic [5:0] p1_paddle,
+    input logic p1_paddle_en,
+    input logic [5:0] p1_lives,
+    input logic p1_lives_en,
+    input logic [5:0] p2_paddle,
+    input logic p2_paddle_en,
+    input logic [5:0] p2_lives,
+    input logic p2_lives_en
     );
     
-    always @(*)
-    begin
+    always_comb begin
         if (!in_frame) begin // In blanking. Output black to give the screen something to calibrate on. 
-            out <= 6'b000000;
+            out = 6'b000000;
         end else if (border_en) begin
-            out <= border;
+            out = border;
         end else if (p1_paddle_en) begin
-            out <= p1_paddle;
+            out = p1_paddle;
         end else if (p2_paddle_en) begin
-            out <= p2_paddle;
+            out = p2_paddle;
         end else if (ball_en) begin
-            out <= ball;
+            out = ball;
         end else if (p1_lives_en) begin
-            out <= p1_lives;
+            out = p1_lives;
         end else if (p2_lives_en) begin
-            out <= p2_lives;
+            out = p2_lives;
         end else begin
-            out <= background;
+            out = background;
         end
     end
 endmodule
