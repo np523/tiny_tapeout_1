@@ -29,7 +29,11 @@ module game_logic
     parameter PADDLE_SPEED = 1,
     parameter PADDLE_WIDTH = 64,
     parameter INITIAL_PADDLE_X = 10'd320 - PADDLE_WIDTH / 2 - 1,
-    parameter BORDER_WIDTH = 8
+    parameter BORDER_WIDTH = 8,
+    parameter HIT_CNT_WIDTH = 4, 
+    parameter SPEED2_CNT = 4, 
+    parameter SPEED3_CNT = 8, 
+    parameter SPEED4_CNT = 12 
 )(
     input logic  clk,
     input logic  nRst,
@@ -66,10 +70,46 @@ module game_logic
     logic end_of_game;
     logic ball_out_of_bounds_p1;
     logic ball_out_of_bounds_p2;
-    // NB: `logic x = expr` is a one-time initializer in SV (like `initial`),
-    // not a continuous assignment like Verilog's `wire x = expr` was -
-    // these three must stay as `assign` to keep tracking p1_lives/p2_lives/
-    // ball_out_of_bounds for the whole game, not just at time 0.
+
+    logic [3:0] hit_counter;
+    logic speed2_en;
+    logic speed3_en;
+    logic speed4_en;
+    logic speed2;
+    logic speed3;
+    logic speed4;
+
+    always_ff @(posedge clk or negedge nRst) begin
+        if(!nRst) begin
+            hit_counter <= '0;
+        end else begin
+            if(end_of_game) begin
+                hit_counter <= '0;
+            end else if(paddle_collision) begin
+                hit_counter <= (hit_counter == '1) ? hit_counter : hit_counter + 1'b1;
+            end
+        end
+    end
+
+    assign speed2_en = (hit_counter >= SPEED2_CNT);
+    assign speed3_en = (hit_counter >= SPEED3_CNT);
+    assign speed4_en = (hit_counter >= SPEED4_CNT);
+
+    logic [1:0] speed_factor_x;
+
+    assign speed_factor_x = speed2_en + speed3_en + speed4_en;
+
+    assign speed2 = (speed2_en && ~speed3_en);
+    assign speed3 = (speed3_en && ~speed4_en);
+    assign speed4 = speed4_en;
+
+    logic [2:0] speed_factor_y;
+
+    always_comb begin 
+        speed_factor_y = speed4 ? 7 : speed3 ? 6 : speed2 ? 4 : 2;
+    end
+
+
     assign p1_out_of_lives = p1_lives == 2'd0;
     assign p2_out_of_lives = p2_lives == 2'd0;
     assign end_of_game = (p1_out_of_lives || p2_out_of_lives) && ball_out_of_bounds;
@@ -177,6 +217,8 @@ module game_logic
                     next_velocity_x = INITIAL_VEL_X;
                     next_velocity_y = INITIAL_VEL_Y;
                 end else if (latched_paddle_collision) begin
+                    case(speed_factor_x)
+                    0:
                     case(latched_paddle_segment)
                         3'b000: next_velocity_x = -3;
                         3'b001: next_velocity_x = -2;
@@ -193,7 +235,60 @@ module game_logic
                         // this block uses when nothing else matches.
                         default: next_velocity_x = velocity_x;
                     endcase
-                    next_velocity_y = -velocity_y;
+                    1:
+                    case(latched_paddle_segment)
+                        3'b000: next_velocity_x = -4;
+                        3'b001: next_velocity_x = -3;
+                        3'b010: next_velocity_x = -2;
+                        3'b011: next_velocity_x = 2;
+                        3'b100: next_velocity_x = 3;
+                        3'b101: next_velocity_x = 4;
+                        // latched_paddle_segment is 3 bits (8 values) but only
+                        // 6 segments exist (PADDLE_NUM_SEGMENTS=6 in pong.sv,
+                        // paddle_painter.v never counts past segment 5) - 110
+                        // and 111 are unreachable in practice, but always_comb
+                        // requires every branch assigned or Yosys infers a
+                        // latch. Same "no change" fallback as the rest of
+                        // this block uses when nothing else matches.
+                        default: next_velocity_x = velocity_x;
+                    endcase
+                    2:
+                    case(latched_paddle_segment)
+                        3'b000: next_velocity_x = -5;
+                        3'b001: next_velocity_x = -4;
+                        3'b010: next_velocity_x = -3;
+                        3'b011: next_velocity_x = 3;
+                        3'b100: next_velocity_x = 4;
+                        3'b101: next_velocity_x = 5;
+                        // latched_paddle_segment is 3 bits (8 values) but only
+                        // 6 segments exist (PADDLE_NUM_SEGMENTS=6 in pong.sv,
+                        // paddle_painter.v never counts past segment 5) - 110
+                        // and 111 are unreachable in practice, but always_comb
+                        // requires every branch assigned or Yosys infers a
+                        // latch. Same "no change" fallback as the rest of
+                        // this block uses when nothing else matches.
+                        default: next_velocity_x = velocity_x;
+                    endcase
+                    3:
+                    case(latched_paddle_segment)
+                        3'b000: next_velocity_x = -7;
+                        3'b001: next_velocity_x = -6;
+                        3'b010: next_velocity_x = -5;
+                        3'b011: next_velocity_x = 5;
+                        3'b100: next_velocity_x = 6;
+                        3'b101: next_velocity_x = 7;
+                        // latched_paddle_segment is 3 bits (8 values) but only
+                        // 6 segments exist (PADDLE_NUM_SEGMENTS=6 in pong.sv,
+                        // paddle_painter.v never counts past segment 5) - 110
+                        // and 111 are unreachable in practice, but always_comb
+                        // requires every branch assigned or Yosys infers a
+                        // latch. Same "no change" fallback as the rest of
+                        // this block uses when nothing else matches.
+                        default: next_velocity_x = velocity_x;
+                    endcase
+                    endcase
+                    next_velocity_y = (velocity_y < 0) ? speed_factor_y : -speed_factor_y;
+
                 end else if (
                     (!latched_ball_left_collision &&  latched_ball_top_collision && !latched_ball_right_collision && !latched_ball_bottom_collision) || // Top collisions
                     ( latched_ball_left_collision &&  latched_ball_top_collision &&  latched_ball_right_collision && !latched_ball_bottom_collision) ||

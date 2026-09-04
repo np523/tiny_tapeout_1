@@ -39,6 +39,7 @@ module pong
     input logic btn_p2_left_pin,
     input logic btn_p2_right_pin,
     input logic btn_p2_select_pin,
+    input logic ai_mode_select,
     output logic  [1:0] vga_r,
     output logic  [1:0] vga_g,
     output logic  [1:0] vga_b,
@@ -49,6 +50,7 @@ module pong
     output logic  sound_out
     );
 
+    
     // Synchronize the inputs
     logic p1_btn_left;
     logic p1_btn_right;
@@ -163,7 +165,7 @@ module pong
         .PADDLE_Y(9'd456),
         .PADDLE_SEGMENT_WIDTH(PADDLE_SEGMENT_WIDTH),
         .PADDLE_NUM_SEGMENTS(PADDLE_NUM_SEGMENTS)
-    ) p1_paddle_painter(
+    ) p1_paddle_painter (
         .clk(clk),
         .nRst(nRst),
         .in_paddle(draw_p1_paddle),
@@ -179,7 +181,7 @@ module pong
         .PADDLE_Y('d16),
         .PADDLE_SEGMENT_WIDTH(PADDLE_SEGMENT_WIDTH),
         .PADDLE_NUM_SEGMENTS(PADDLE_NUM_SEGMENTS)
-    ) p2_paddle_painter(
+    ) p2_paddle_painter (
         .clk(clk),
         .nRst(nRst),
         .in_paddle(draw_p2_paddle),
@@ -202,7 +204,7 @@ module pong
     logic [1:0] p1_lives;
     lives_painter #(
         .LIVES_Y(474)
-    ) p1_lives_painter(
+    ) p1_lives_painter (
         .clk(clk),
         .nRst(nRst),
         .in_lives(draw_p1_lives),
@@ -215,7 +217,7 @@ module pong
     logic [1:0] p2_lives;
     lives_painter #(
         .LIVES_Y(2)
-    ) p2_lives_painter(
+    ) p2_lives_painter (
         .clk(clk),
         .nRst(nRst),
         .in_lives(draw_p2_lives),
@@ -240,6 +242,12 @@ module pong
     // Game logic
     logic [0:0] game_state;
     logic ball_out_of_bounds;
+    logic p2_btn_left_real;
+    logic p2_btn_right_real;
+
+    assign p2_btn_left_real = ai_mode_select ? ai_move_left : p2_btn_left;
+    assign p2_btn_right_real = ai_mode_select ? ai_move_right : p2_btn_right;
+
     game_logic #(
         .PADDLE_WIDTH(PADDLE_SEGMENT_WIDTH * PADDLE_NUM_SEGMENTS),
         .BORDER_WIDTH(BORDER_WIDTH),
@@ -247,7 +255,7 @@ module pong
         .INITIAL_BALL_Y(INITIAL_BALL_Y),
         .INITIAL_VEL_X(INITIAL_VEL_X),
         .INITIAL_VEL_Y(INITIAL_VEL_Y)
-    ) game_logic(
+    ) game_logic (
         .clk(clk),
         .nRst(nRst),
         .ball_x(ball_x),
@@ -261,8 +269,8 @@ module pong
         .p1_btn_left(p1_btn_left),
         .p1_btn_right(p1_btn_right),
         .p2_btn_action(p2_btn_select),
-        .p2_btn_left(p2_btn_left),
-        .p2_btn_right(p2_btn_right),
+        .p2_btn_left(p2_btn_left_real),
+        .p2_btn_right(p2_btn_right_real),
         .collision(collision),
         .paddle_collision(paddle_collision),
         .paddle_segment(paddle_segment),
@@ -272,6 +280,17 @@ module pong
         .ball_right_col(ball_right_en),
         .game_state(game_state),
         .ball_out_of_bounds(ball_out_of_bounds)
+    );
+
+    ai_opponent  #(
+        .PADDLE_WIDTH(PADDLE_SEGMENT_WIDTH * PADDLE_NUM_SEGMENTS)
+    ) ai_opponent (
+        .clk(clk), 
+        .nRst(nRst), 
+        .ball_x(ball_x), 
+        .paddle_2_x(p2_paddle_x), 
+        .move_left(ai_move_left),
+        .move_right(ai_move_right)
     );
     
 endmodule

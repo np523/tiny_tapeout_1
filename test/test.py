@@ -63,6 +63,15 @@ def decide_biased_move(ref_model, player: str, follow_prob: float = 0.85) -> tup
     return (move == "left", move == "right")
 
 
+def _to_signed(raw: int, bits: int) -> int:
+    """Decode an unsigned raw bit pattern read back from a signed HDL net.
+    Robust regardless of whether cocotb's int() already applied sign
+    extension - Python's bitwise AND normalizes either representation to
+    the same low-order bits before the sign-bit check."""
+    raw &= (1 << bits) - 1
+    return raw - (1 << bits) if raw & (1 << (bits - 1)) else raw
+
+
 def decode_uo_out(dut) -> tuple[bool, bool, int, int, int]:
     """Decode dut.uo_out using the Tiny VGA Pmod bit order:
     uo_out = {hsync, B0, G0, R0, vsync, B1, G1, R1}
@@ -126,7 +135,34 @@ class ReferenceModel:
     _P2_LEFT_LIMIT_VAL = (BORDER_WIDTH >> 1)                            # 4
     _RIGHT_LIMIT_VAL = (SCREEN_W - BORDER_WIDTH - PADDLE_WIDTH) >> 1    # 304
 
-    _SEGMENT_VX = {0: -3, 1: -2, 2: -1, 3: 1, 4: 2, 5: 3}
+    # Rally speed-up: hit_counter is a 4-bit SATURATING counter (game_logic.sv
+    # lines 74-90) incremented on every raw `paddle_collision` pulse - which
+    # fires DURING ball-scanning, well before that frame's frame_pulse. The
+    # tier-select logic (speed2_en/speed3_en/speed4_en -> speed_factor_x/y)
+    # is purely combinational from hit_counter's CURRENT value, and is
+    # consumed by the next_velocity_x/y case block at frame_pulse time using
+    # `latched_paddle_collision` (latched across the frame, cleared AT
+    # frame_pulse). Net effect: by the time a hit's own velocity update is
+    # computed, hit_counter has ALREADY incremented for that same hit - so
+    # the tier used for a given hit reflects the count INCLUDING that hit,
+    # not the count before it. Modeled here as: increment first, then look
+    # up tier from the post-increment value (see _resolve_paddle_hit).
+    HIT_CNT_WIDTH = 4
+    HIT_CNT_MAX = (1 << HIT_CNT_WIDTH) - 1  # 15, saturates (no wrap)
+    SPEED2_CNT = 4
+    SPEED3_CNT = 8
+    SPEED4_CNT = 12
+
+    # Per-tier segment->vx tables, bit-exact copies of the four case(speed_factor_x)
+    # branches in game_logic.sv (lines 218-287).
+    _SEGMENT_VX_TIERS = {
+        0: {0: -3, 1: -2, 2: -1, 3: 1, 4: 2, 5: 3},
+        1: {0: -4, 1: -3, 2: -2, 3: 2, 4: 3, 5: 4},
+        2: {0: -5, 1: -4, 2: -3, 3: 3, 4: 4, 5: 5},
+        3: {0: -7, 1: -6, 2: -5, 3: 5, 4: 6, 5: 7},
+    }
+    # speed_factor_y per tier (game_logic.sv line 107: speed4?7:speed3?6:speed2?4:2).
+    _SPEED_FACTOR_Y = {0: 2, 1: 4, 2: 6, 3: 7}
 
     def __init__(self):
         self.reset()
@@ -143,6 +179,7 @@ class ReferenceModel:
         self.velocity_y = self.INITIAL_VEL_Y
         self.p1_paddle_x = self.INITIAL_PADDLE_X
         self.p2_paddle_x = self.INITIAL_PADDLE_X
+        self.hit_counter = 0
 
     @property
     def ball_x(self) -> int:
@@ -152,10 +189,34 @@ class ReferenceModel:
     def ball_y(self) -> int:
         return self.ball_state_y >> 1
 
+    @classmethod
+    def _tier_for(cls, hit_counter: int) -> int:
+        speed2_en = hit_counter >= cls.SPEED2_CNT
+        speed3_en = hit_counter >= cls.SPEED3_CNT
+        speed4_en = hit_counter >= cls.SPEED4_CNT
+        return int(speed2_en) + int(speed3_en) + int(speed4_en)
+
+    def _resolve_paddle_hit(self, segment: int) -> int:
+        """One paddle-hit velocity update: bumps hit_counter (saturating),
+        then applies the resulting tier's vx (by segment) and vy (magnitude
+        from the tier, SIGN FLIPPED relative to the ball's incoming
+        velocity_y - matching game_logic.sv line 288's
+        `(velocity_y < 0) ? speed_factor_y : -speed_factor_y`, which reverses
+        travel direction rather than always forcing negative). Returns the
+        tier used, for test assertions."""
+        if self.hit_counter < self.HIT_CNT_MAX:
+            self.hit_counter += 1
+        tier = self._tier_for(self.hit_counter)
+        self.velocity_x = self._SEGMENT_VX_TIERS[tier][segment]
+        self.velocity_y = (self._SPEED_FACTOR_Y[tier] if self.velocity_y < 0
+                            else -self._SPEED_FACTOR_Y[tier])
+        return tier
+
     def velocity_within_safety_bounds(self) -> bool:
-        """Stub until discrete rally speed-up lands; becomes the real
-        tunneling-safety invariant check then (|v| must stay inside the
-        4-bit-signed range that guarantees no missed collisions)."""
+        """Tunneling-safety invariant: |v| must stay inside the 4-bit-signed
+        range (-8..7) that guarantees the ball can't skip over an 8px-thick
+        border/paddle in a single frame. Real check now that rally speed-up
+        is non-trivial (tier 3 reaches magnitude 7, right at the ceiling)."""
         return -8 <= self.velocity_x <= 7 and -8 <= self.velocity_y <= 7
 
     # 5x5 ball bounding box, per ball_painter.v's four-lobe ASCII art
@@ -311,6 +372,8 @@ class ReferenceModel:
                 # the next time THEY personally lose a point. Asymmetric,
                 # but that's what the RTL actually does.
                 end_of_game = (self.p1_lives == 0 or self.p2_lives == 0)
+                if end_of_game:
+                    self.hit_counter = 0  # game_logic.sv line 83: !nRst || end_of_game
                 if p1_out:
                     self.p1_lives = 3 if end_of_game else self.p1_lives - 1
                     events.append(("life_lost", "p1"))
@@ -349,9 +412,8 @@ class ReferenceModel:
             if paddle_hit_player is not None:
                 px = self.p1_paddle_x if paddle_hit_player == "p1" else self.p2_paddle_x
                 segment = self._segment_for_hit(px, ball_cx)
-                self.velocity_x = self._SEGMENT_VX[segment]
-                self.velocity_y = -self.velocity_y
-                events.append(("paddle_hit", paddle_hit_player, segment))
+                tier = self._resolve_paddle_hit(segment)
+                events.append(("paddle_hit", paddle_hit_player, segment, tier))
             elif border_hit:
                 self.velocity_x = -self.velocity_x
                 events.append(("wall_hit", "x"))
@@ -577,6 +639,7 @@ class Coverage:
         self.bins = {
             "p1_segment_hit": [False] * 6,
             "p2_segment_hit": [False] * 6,
+            "speed_tier_hit": [False] * 4,
             "p1_limit_left": False, "p1_limit_right": False,
             "p2_limit_left": False, "p2_limit_right": False,
             "p1_life_lost": False, "p2_life_lost": False,
@@ -588,8 +651,9 @@ class Coverage:
     def mark(self, event: tuple):
         kind = event[0]
         if kind == "paddle_hit":
-            _, player, segment = event
+            _, player, segment, tier = event
             self.bins[f"{player}_segment_hit"][segment] = True
+            self.bins["speed_tier_hit"][tier] = True
         elif kind == "wall_hit":
             self.bins["wall_hit"] = True
         elif kind == "life_lost":
@@ -841,3 +905,113 @@ async def test_biased_random_play(dut):
     dut._log.info(f"Random play done. Scoreboard fail_count={scoreboard.fail_count}")
     dut._log.info(f"Coverage: {coverage.summary_str()}")
     assert scoreboard.fail_count == 0
+
+
+@cocotb.test()
+async def test_speedup_tier_transitions(dut):
+    """White-box: force game_logic's hit_counter/velocity_y/
+    latched_paddle_collision/latched_paddle_segment registers directly,
+    timed to land one cycle before a real frame_pulse edge, and confirm the
+    resulting velocity_x/velocity_y/hit_counter match ReferenceModel's
+    prediction - at each of the three tier-transition boundaries (3->4,
+    7->8, 11->12), for both an incoming-up and incoming-down ball.
+
+    Deliberate, scoped break from black-box discipline: justified
+    specifically for validating an internal counter's threshold behavior,
+    which the rest of the (black-box, pixel-level) DV suite has no
+    practical way to exercise without thousands of real frames of earning
+    hits through actual rallying (~75-100s/frame here, so ~12 real frames
+    for this whole test vs. ~2,800+ for a naturally-played equivalent).
+
+    Timing: vga_timing.sv's frame_pulse = (hor_counter==799 &&
+    vert_counter==524), i.e. exactly cycle FRAME_CYCLES-1 of every
+    reset-aligned FRAME_CYCLES window. Running FRAME_CYCLES-1 cycles from a
+    known-aligned start, forcing state, then stepping exactly one more edge
+    lands precisely on the one edge that consumes the forced values -
+    before any real driving logic (collision detection, the latch-clear
+    block) gets a chance to intervene. ball_state_y is force-held in-bounds
+    each time so the ball_out_of_bounds branch can't preempt the paddle-hit
+    branch in game_logic.sv's next_velocity_x/y case block.
+
+    hit_counter is forced DIRECTLY to each tier-boundary value (4, 8, 12)
+    rather than to the pre-boundary value with an expected real increment:
+    hit_counter only increments from `paddle_collision`, a game_logic
+    MODULE INPUT PORT continuously driven by the real collision-detection
+    logic elsewhere in pong.sv - forcing a continuously-driven port from
+    cocotb is unreliable under Verilator (the real driver can win the race
+    every delta cycle), unlike forcing an internal register such as
+    hit_counter itself or latched_paddle_collision, which have no other
+    driver on the cycle we care about. The increment arithmetic itself
+    (`hit_counter + 1`) is trivial and already independently verified in
+    test_speedup_model.py; this test's job is specifically the
+    tier-selection combinational logic and the sign-fix, which only depend
+    on hit_counter's VALUE, not on how it got there.
+    """
+    dut._log.info("Start")
+    clock = Clock(dut.clk, 10, units="us")
+    cocotb.start_soon(clock.start())
+    dut.ena.value = 1
+    dut.ui_in.value = 0
+    dut.uio_in.value = 0
+    dut.rst_n.value = 0
+    await ClockCycles(dut.clk, 10)
+    dut.rst_n.value = 1
+
+    gl = dut.user_project.pong.game_logic
+
+    # Get to STATE_PLAYING via a real serve (not forced) - avoids fighting
+    # game_state's own driving logic and matches how every other test enters
+    # play.
+    driver = PaddleDriver(dut)
+    driver.set_button("p1", "select", True)
+    await ClockCycles(dut.clk, FRAME_CYCLES)
+    driver.set_button("p1", "select", False)
+    await ReadOnly()
+    assert int(gl.game_state.value) == 1, "expected STATE_PLAYING after serve"
+
+    boundary_hcs = [ReferenceModel.SPEED2_CNT, ReferenceModel.SPEED3_CNT, ReferenceModel.SPEED4_CNT]
+    segment = 0  # fixed; all (tier, segment) combinations already checked
+                 # exhaustively in test_speedup_model.py - this test's job is
+                 # only to confirm the REAL RTL's threshold/ordering/sign
+                 # behavior, not to re-sweep segments.
+
+    for target_hc in boundary_hcs:
+        expected_tier = ReferenceModel._tier_for(target_hc)
+        for incoming_vy in (-3, 3):
+            # Run to exactly one cycle before the next frame_pulse edge.
+            await ClockCycles(dut.clk, FRAME_CYCLES - 1)
+
+            # Force state right before the frame_pulse edge.
+            gl.hit_counter.value = target_hc
+            gl.velocity_y.value = incoming_vy & 0xF
+            gl.latched_paddle_collision.value = 1
+            gl.latched_paddle_segment.value = segment
+            gl.ball_state_y.value = ReferenceModel.INITIAL_BALL_Y * 2  # safely in-bounds
+
+            await ClockCycles(dut.clk, 1)  # the frame_pulse edge itself
+            await ReadOnly()
+
+            actual_hit_counter = int(gl.hit_counter.value)
+            actual_vx = _to_signed(int(gl.velocity_x.value), 4)
+            actual_vy = _to_signed(int(gl.velocity_y.value), 4)
+
+            expected_vx = ReferenceModel._SEGMENT_VX_TIERS[expected_tier][segment]
+            expected_vy = (ReferenceModel._SPEED_FACTOR_Y[expected_tier] if incoming_vy < 0
+                           else -ReferenceModel._SPEED_FACTOR_Y[expected_tier])
+
+            # hit_counter isn't expected to change here (no real paddle_collision
+            # pulse was driven) - this just confirms our force actually stuck.
+            assert actual_hit_counter == target_hc, \
+                f"hit_counter force didn't hold: expected {target_hc}, DUT has {actual_hit_counter}"
+            assert actual_vx == expected_vx, \
+                (f"tier {expected_tier} (hit_counter={target_hc}) segment {segment}: "
+                 f"DUT vx={actual_vx}, expected vx={expected_vx}")
+            assert actual_vy == expected_vy, \
+                (f"tier {expected_tier} (hit_counter={target_hc}) incoming_vy={incoming_vy}: "
+                 f"DUT vy={actual_vy}, expected vy={expected_vy}")
+            dut._log.info(
+                f"hit_counter={target_hc} (tier {expected_tier}), incoming_vy={incoming_vy}: "
+                f"vx={actual_vx} vy={actual_vy} - matched expectation"
+            )
+
+    dut._log.info("All speed-tier transition checks matched the ReferenceModel")

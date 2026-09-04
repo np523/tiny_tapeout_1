@@ -56,7 +56,8 @@ module tt_um_np523_pong (
         .vga_vsync(vga_vsync),
         .vblank(vblank),
         .hblank(hblank),
-        .sound_out(sound)
+        .sound_out(sound),
+        .ai_mode_select(ui_in[0])
     );
 
     // Standard Tiny VGA Pmod pinout: uo_out = {hsync, B0, G0, R0, vsync, B1, G1, R1}
