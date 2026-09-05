@@ -1,0 +1,31 @@
+# Unit-level Makefile for the game_logic module on its own.
+# Usage (from test/):  make -f Makefile.game_logic
+#
+# Deliberately separate from the main Makefile: this compiles ONLY
+# game_logic.sv + tb_game_logic.v, so it neither depends on nor disturbs the
+# full-system flow, and its sim_build directory is separate so the two don't
+# invalidate each other's compiled output.
+
+SIM ?= verilator
+TOPLEVEL_LANG ?= verilog
+SRC_DIR = $(PWD)/../src
+
+SIM_BUILD = sim_build/game_logic
+
+VERILOG_SOURCES += $(SRC_DIR)/game_logic.sv
+VERILOG_SOURCES += $(PWD)/tb_game_logic.v
+TOPLEVEL = tb_game_logic
+
+COCOTB_TEST_MODULES = test_game_logic
+# cocotb 1.9.x's Makefile.verilator reads MODULE directly, not
+# COCOTB_TEST_MODULES - set both, same as the main Makefile.
+MODULE = test_game_logic
+
+COMPILE_ARGS += -I$(SRC_DIR)
+
+ifeq ($(SIM),verilator)
+COMPILE_ARGS += --timing
+COMPILE_ARGS += -Wno-fatal
+endif
+
+include $(shell cocotb-config --makefiles)/Makefile.sim

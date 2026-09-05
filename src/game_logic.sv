@@ -79,17 +79,7 @@ module game_logic
     logic speed3;
     logic speed4;
 
-    always_ff @(posedge clk or negedge nRst) begin
-        if(!nRst) begin
-            hit_counter <= '0;
-        end else begin
-            if(end_of_game) begin
-                hit_counter <= '0;
-            end else if(paddle_collision) begin
-                hit_counter <= (hit_counter == '1) ? hit_counter : hit_counter + 1'b1;
-            end
-        end
-    end
+   
 
     assign speed2_en = (hit_counter >= SPEED2_CNT);
     assign speed3_en = (hit_counter >= SPEED3_CNT);
@@ -187,6 +177,18 @@ module game_logic
             end
             if(paddle_collision) begin
                 latched_paddle_segment <= paddle_segment;
+            end
+        end
+    end
+
+     always_ff @(posedge clk or negedge nRst) begin
+        if(!nRst) begin
+            hit_counter <= '0;
+        end else begin
+            if(end_of_game) begin
+                hit_counter <= '0;
+            end else if(collision && paddle_collision && !latched_paddle_collision) begin
+                hit_counter <= (hit_counter == '1) ? hit_counter : hit_counter + 1'b1;
             end
         end
     end

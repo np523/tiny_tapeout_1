@@ -192,13 +192,18 @@ module pong
         .paddle_segment(p2_paddle_segment)
     );
     
-    // Collisions
-    logic wall_collision = draw_border && draw_ball;
-    logic p1_paddle_collision = draw_p1_paddle && draw_ball;
-    logic p2_paddle_collision = draw_p2_paddle && draw_ball;
-    logic paddle_collision = p1_paddle_collision || p2_paddle_collision;
-    logic [2:0] paddle_segment = p1_paddle_collision ? p1_paddle_segment : p2_paddle_segment;
-    logic collision = wall_collision || paddle_collision;
+    logic wall_collision;
+    logic p1_paddle_collision;
+    logic p2_paddle_collision;
+    logic paddle_collision;
+    logic [2:0] paddle_segment;
+    logic collision;
+    assign wall_collision = draw_border && draw_ball;
+    assign p1_paddle_collision = draw_p1_paddle && draw_ball;
+    assign p2_paddle_collision = draw_p2_paddle && draw_ball;
+    assign paddle_collision = p1_paddle_collision || p2_paddle_collision;
+    assign paddle_segment = p1_paddle_collision ? p1_paddle_segment : p2_paddle_segment;
+    assign collision = wall_collision || paddle_collision;
 
     // Lives painter
     logic [1:0] p1_lives;
