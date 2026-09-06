@@ -1,3 +1,4 @@
+`timescale 1ns / 1ps
 module ai_opponent #(
     parameter PADDLE_WIDTH = 24,
     parameter PADDLE_OFFSET = PADDLE_WIDTH/2,
