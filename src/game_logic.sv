@@ -69,10 +69,6 @@ module game_logic
     output logic [2:0] paddle_speed
 );
 
-    logic p1_paddle_is_at_left_limit;
-    logic p1_paddle_is_at_right_limit;
-    logic p2_paddle_is_at_left_limit;
-    logic p2_paddle_is_at_right_limit;
     logic p1_out_of_lives;
     logic p2_out_of_lives;
     logic end_of_game;
@@ -365,10 +361,11 @@ module game_logic
     /////////////////////////////////////////////
     // Paddle logic
     /////////////////////////////////////////////    
+    localparam P1_LEFT_LIMIT_RAW = (BORDER_WIDTH >> 1) - 1;
+    localparam P2_LEFT_LIMIT_RAW = (BORDER_WIDTH >> 1);
+    localparam RIGHT_LIMIT_RAW = (640 - BORDER_WIDTH - PADDLE_WIDTH);
+
     logic [9:0] p1_paddle_state_x;
-    // Ignore the bottom bit to account for the velocity of the paddle
-    assign p1_paddle_is_at_left_limit = p1_paddle_state_x[9:1] == (BORDER_WIDTH >> 1) - 1;
-    assign p1_paddle_is_at_right_limit = p1_paddle_state_x[9:1] == ((640 - BORDER_WIDTH - PADDLE_WIDTH) >> 1) - 4;
     always_ff @(posedge clk or negedge nRst)
     begin
         if(!nRst) begin
@@ -377,21 +374,22 @@ module game_logic
             if(frame_pulse) begin
                 if(ball_out_of_bounds) begin
                     p1_paddle_state_x <= INITIAL_PADDLE_X;
-                end else if (p1_btn_left && !p1_paddle_is_at_left_limit) begin
-                    p1_paddle_state_x <= p1_paddle_state_x - paddle_speed;
-                end else if (p1_btn_right && !p1_paddle_is_at_right_limit) begin
-                    p1_paddle_state_x <= p1_paddle_state_x + paddle_speed;
+                end else if (p1_btn_left) begin
+                    p1_paddle_state_x <= (p1_paddle_state_x > P1_LEFT_LIMIT_RAW + paddle_speed)
+                                         ? p1_paddle_state_x - paddle_speed
+                                         : P1_LEFT_LIMIT_RAW;
+                end else if (p1_btn_right) begin
+                    p1_paddle_state_x <= (p1_paddle_state_x < RIGHT_LIMIT_RAW - paddle_speed)
+                                         ? p1_paddle_state_x + paddle_speed
+                                         : RIGHT_LIMIT_RAW;
                 end
             end
         end
     end
-    
+
     assign p1_paddle_x = p1_paddle_state_x;
 
     logic [9:0] p2_paddle_state_x;
-    // Ignore the bottom bit to account for the velocity of the paddle
-    assign p2_paddle_is_at_left_limit = p2_paddle_state_x[9:1] == BORDER_WIDTH >> 1;
-    assign p2_paddle_is_at_right_limit = p2_paddle_state_x[9:1] == ((640 - BORDER_WIDTH - PADDLE_WIDTH) >> 1) - 4;
     always_ff @(posedge clk or negedge nRst)
     begin
         if(!nRst) begin
@@ -400,15 +398,19 @@ module game_logic
             if(frame_pulse) begin
                 if(ball_out_of_bounds) begin
                     p2_paddle_state_x <= INITIAL_PADDLE_X;
-                end else if (p2_btn_left && !p2_paddle_is_at_left_limit) begin
-                    p2_paddle_state_x <= p2_paddle_state_x - paddle_speed;
-                end else if (p2_btn_right && !p2_paddle_is_at_right_limit) begin
-                    p2_paddle_state_x <= p2_paddle_state_x + paddle_speed;
+                end else if (p2_btn_left) begin
+                    p2_paddle_state_x <= (p2_paddle_state_x > P2_LEFT_LIMIT_RAW + paddle_speed)
+                                         ? p2_paddle_state_x - paddle_speed
+                                         : P2_LEFT_LIMIT_RAW;
+                end else if (p2_btn_right) begin
+                    p2_paddle_state_x <= (p2_paddle_state_x < RIGHT_LIMIT_RAW - paddle_speed)
+                                         ? p2_paddle_state_x + paddle_speed
+                                         : RIGHT_LIMIT_RAW;
                 end
             end
         end
     end
-    
+
     assign p2_paddle_x = p2_paddle_state_x;
 
 endmodule
