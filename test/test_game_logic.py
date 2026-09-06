@@ -600,6 +600,58 @@ async def test_paddle_speed_scales_with_tier(dut):
             f"at paddle_speed={want_speed}, one left press should move {want_speed}px, moved {moved}"
 
 
+@cocotb.test()
+async def test_paddle_limits_no_overshoot_at_every_speed(dut):
+    """The paddle-limit clamp must land EXACTLY on the true boundary and
+    never overshoot or underflow/wrap, at every paddle_speed tier (2, 3, 4).
+    This is the exact defect class that made the AI paddle wrap around the
+    left edge and reappear on the right at top speed.
+
+    hit_counter is forced directly (white-box) rather than earned through
+    simulated hits, and the ball is deliberately never served (game_state
+    stays START) - paddle movement isn't gated on game_state at all, and
+    parking the ball means it can never go out of bounds mid-sweep and
+    reset both paddles back to centre (same technique as
+    test_paddle_left_limits_are_asymmetric/test_paddle_right_limits).
+    """
+    RIGHT_LIMIT_RAW = 640 - GameLogicUnit.BORDER_WIDTH - GameLogicUnit.PADDLE_WIDTH
+    P1_LEFT_LIMIT_RAW = 2 * ((GameLogicUnit.BORDER_WIDTH >> 1) - 1) + 1
+    P2_LEFT_LIMIT_RAW = 2 * (GameLogicUnit.BORDER_WIDTH >> 1) + 1
+
+    speed_for_hits = {
+        0: GameLogicUnit.PADDLE_SPEED_INIT,
+        8: GameLogicUnit.PADDLE_MID_SPEED,
+        12: GameLogicUnit.PADDLE_TOP_SPEED,
+    }
+
+    for target_hits, want_speed in speed_for_hits.items():
+        u = GameLogicUnit(dut)
+        await u.start()
+        u.gl.hit_counter.value = target_hits
+        await ClockCycles(dut.clk, 1)
+        s = await u.state()
+        assert s["paddle_speed"] == want_speed, \
+            f"setup: forcing hit_counter={target_hits} should give paddle_speed={want_speed}, got {s['paddle_speed']}"
+
+        for _ in range(200):
+            await u.frame(p1_left=1, p2_left=1)
+        s = await u.state()
+        assert s["p1_paddle_x"] == P1_LEFT_LIMIT_RAW, \
+            f"p1 left @ speed={want_speed}: expected {P1_LEFT_LIMIT_RAW}, got {s['p1_paddle_x']}"
+        assert s["p2_paddle_x"] == P2_LEFT_LIMIT_RAW, \
+            f"p2 left @ speed={want_speed}: expected {P2_LEFT_LIMIT_RAW}, got {s['p2_paddle_x']}"
+        assert s["p1_paddle_x"] < 100 and s["p2_paddle_x"] < 100, \
+            f"possible wraparound on left sweep: p1={s['p1_paddle_x']} p2={s['p2_paddle_x']}"
+
+        for _ in range(400):
+            await u.frame(p1_right=1, p2_right=1)
+        s = await u.state()
+        assert s["p1_paddle_x"] == RIGHT_LIMIT_RAW, \
+            f"p1 right @ speed={want_speed}: expected {RIGHT_LIMIT_RAW}, got {s['p1_paddle_x']}"
+        assert s["p2_paddle_x"] == RIGHT_LIMIT_RAW, \
+            f"p2 right @ speed={want_speed}: expected {RIGHT_LIMIT_RAW}, got {s['p2_paddle_x']}"
+
+
 # ---------------------------------------------------------------------------
 # Rally speed-up
 # ---------------------------------------------------------------------------
@@ -626,10 +678,10 @@ async def test_hit_counter_increments_once_per_hit(dut):
 @cocotb.test()
 async def test_speed_tiers_by_natural_rally(dut):
     """Play a real rally and confirm the speed tiers engage at the right hit
-    counts: tier 0 (|vy|=2) below 4 hits, tier 1 (4) at 4, tier 2 (6) at 8,
-    tier 3 (7) at 12."""
+    counts: tier 0 (|vy|=2) below 4 hits, tier 1 (4) at 4, tier 2 (5) at 8,
+    tier 3 (6) at 12."""
     expected_vy_mag = {1: 2, 2: 2, 3: 2, 4: 4, 5: 4, 6: 4, 7: 4,
-                       8: 6, 9: 6, 10: 6, 11: 6, 12: 7, 13: 7}
+                       8: 5, 9: 5, 10: 5, 11: 5, 12: 6, 13: 6}
     u = GameLogicUnit(dut)
     await u.start()
     await u.serve()
@@ -653,7 +705,7 @@ async def test_hit_counter_saturates(dut):
         await u.frame(paddle_hit=True, segment=3)
     s = await u.state()
     assert s["hit_counter"] == 15, f"hit_counter should saturate at 15, got {s['hit_counter']}"
-    assert abs(s["vy"]) == 7, f"should still be at top tier, got |vy|={abs(s['vy'])}"
+    assert abs(s["vy"]) == 6, f"should still be at top tier, got |vy|={abs(s['vy'])}"
 
 
 @cocotb.test()

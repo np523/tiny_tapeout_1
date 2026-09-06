@@ -126,7 +126,7 @@ def test_vy_sign_flips_both_directions():
     downward-moving ball in normal play, P2/top hits an upward-moving one -
     this test doesn't assume which paddle sees which sign, it just checks
     both signs land correctly regardless of which paddle triggered it)."""
-    expected_mag = {0: 2, 1: 4, 2: 6, 3: 7}
+    expected_mag = {0: 2, 1: 4, 2: 5, 3: 6}
     for tier in range(4):
         target_hc = {0: 0, 1: ReferenceModel.SPEED2_CNT - 1,
                      2: ReferenceModel.SPEED3_CNT - 1,

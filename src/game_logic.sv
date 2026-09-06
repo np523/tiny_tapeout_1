@@ -361,8 +361,8 @@ module game_logic
     /////////////////////////////////////////////
     // Paddle logic
     /////////////////////////////////////////////    
-    localparam P1_LEFT_LIMIT_RAW = (BORDER_WIDTH >> 1) - 1;
-    localparam P2_LEFT_LIMIT_RAW = (BORDER_WIDTH >> 1);
+    localparam P1_LEFT_LIMIT_RAW = 2 * ((BORDER_WIDTH >> 1) - 1) + 1;
+    localparam P2_LEFT_LIMIT_RAW = 2 * (BORDER_WIDTH >> 1) + 1;
     localparam RIGHT_LIMIT_RAW = (640 - BORDER_WIDTH - PADDLE_WIDTH);
 
     logic [9:0] p1_paddle_state_x;

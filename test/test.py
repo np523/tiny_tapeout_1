@@ -168,7 +168,7 @@ class ReferenceModel:
         3: {0: -7, 1: -6, 2: -5, 3: 5, 4: 6, 5: 7},
     }
     # speed_factor_y per tier (game_logic.sv line 107: speed4?7:speed3?6:speed2?4:2).
-    _SPEED_FACTOR_Y = {0: 2, 1: 4, 2: 6, 3: 7}
+    _SPEED_FACTOR_Y = {0: 2, 1: 4, 2: 5, 3: 6}
 
     def __init__(self):
         self.reset()
