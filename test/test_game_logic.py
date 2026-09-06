@@ -59,6 +59,14 @@ class GameLogicUnit:
     INITIAL_VEL_Y = 2
     INITIAL_PADDLE_X = 320 - PADDLE_WIDTH // 2 - 1  # 307
 
+    # Paddle speed now scales with the same hit_counter tiers as the ball's
+    # own speed-up (game_logic.sv: paddle_speed = speed4?TOP:speed3?MID:INIT -
+    # note tier 1 (hit_counter 4-7) still maps to INIT, there's no distinct
+    # paddle speed for it).
+    PADDLE_SPEED_INIT = 2
+    PADDLE_MID_SPEED = 3
+    PADDLE_TOP_SPEED = 4
+
     # Paddle travel limits, in the RTL's own halved units (it compares
     # paddle_state_x[9:1], "ignoring the bottom bit to account for the
     # velocity of the paddle"). Note p1 and p2 are ASYMMETRIC in the RTL:
@@ -156,6 +164,8 @@ class GameLogicUnit:
             "hit_counter": int(self.gl.hit_counter.value),
             "ball_state_x": int(self.gl.ball_state_x.value),
             "ball_state_y": int(self.gl.ball_state_y.value),
+            "speed_tier": int(self.dut.speed_tier.value),
+            "paddle_speed": int(self.dut.paddle_speed.value),
         }
         await NextTimeStep()
         return s
@@ -456,15 +466,18 @@ async def test_end_of_game_resets_lives_and_hit_counter(dut):
 
 @cocotb.test()
 async def test_paddle_movement_directions(dut):
-    """Each paddle moves by PADDLE_SPEED in the commanded direction."""
+    """Each paddle moves by the current paddle_speed in the commanded
+    direction - PADDLE_SPEED_INIT (tier 0, right after serve) here."""
     u = GameLogicUnit(dut)
     await u.start()
     await u.serve()
     base = await u.state()
+    assert base["paddle_speed"] == u.PADDLE_SPEED_INIT, \
+        f"setup: expected tier-0 paddle_speed={u.PADDLE_SPEED_INIT}, got {base['paddle_speed']}"
 
     await u.frame(p1_left=1)
     s = await u.state()
-    assert s["p1_paddle_x"] == base["p1_paddle_x"] - 1, f"p1 left: got {s['p1_paddle_x']}"
+    assert s["p1_paddle_x"] == base["p1_paddle_x"] - u.PADDLE_SPEED_INIT, f"p1 left: got {s['p1_paddle_x']}"
 
     await u.frame(p1_right=1)
     s = await u.state()
@@ -472,7 +485,7 @@ async def test_paddle_movement_directions(dut):
 
     await u.frame(p2_left=1)
     s = await u.state()
-    assert s["p2_paddle_x"] == base["p2_paddle_x"] - 1, f"p2 left: got {s['p2_paddle_x']}"
+    assert s["p2_paddle_x"] == base["p2_paddle_x"] - u.PADDLE_SPEED_INIT, f"p2 left: got {s['p2_paddle_x']}"
 
     await u.frame(p2_right=1)
     s = await u.state()
@@ -489,7 +502,7 @@ async def test_paddle_both_buttons_left_wins(dut):
     before = await u.state()
     await u.frame(p1_left=1, p1_right=1)
     after = await u.state()
-    assert after["p1_paddle_x"] == before["p1_paddle_x"] - 1, \
+    assert after["p1_paddle_x"] == before["p1_paddle_x"] - before["paddle_speed"], \
         f"both buttons should move left, got {after['p1_paddle_x']} from {before['p1_paddle_x']}"
 
 
@@ -549,6 +562,42 @@ async def test_paddle_reset_beats_movement_on_oob(dut):
     s = await u.state()
     assert s["p1_paddle_x"] == u.INITIAL_PADDLE_X, \
         f"paddle should reset on OOB despite the held button, got {s['p1_paddle_x']}"
+
+
+@cocotb.test()
+async def test_paddle_speed_scales_with_tier(dut):
+    """paddle_speed/speed_tier must track the same hit_counter thresholds as
+    the ball's own speed tiers, and the paddle's actual per-frame
+    displacement must match paddle_speed exactly at each one. Tier 1
+    (hit_counter 4-7) has no distinct paddle speed of its own - it still
+    maps to PADDLE_SPEED_INIT, matching game_logic.sv's
+    speed4?TOP:speed3?MID:INIT."""
+    expected = {
+        0: (0, GameLogicUnit.PADDLE_SPEED_INIT),
+        4: (1, GameLogicUnit.PADDLE_SPEED_INIT),
+        8: (2, GameLogicUnit.PADDLE_MID_SPEED),
+        12: (3, GameLogicUnit.PADDLE_TOP_SPEED),
+    }
+    u = GameLogicUnit(dut)
+    await u.start()
+    await u.serve()
+
+    for target_hits in sorted(expected):
+        while (await u.state())["hit_counter"] < target_hits:
+            await u.frame(paddle_hit=True, segment=3)
+        want_tier, want_speed = expected[target_hits]
+        s = await u.state()
+        assert s["speed_tier"] == want_tier, \
+            f"hit_counter={s['hit_counter']}: expected speed_tier={want_tier}, got {s['speed_tier']}"
+        assert s["paddle_speed"] == want_speed, \
+            f"hit_counter={s['hit_counter']}: expected paddle_speed={want_speed}, got {s['paddle_speed']}"
+
+        before = await u.state()
+        await u.frame(p1_left=1)
+        after = await u.state()
+        moved = before["p1_paddle_x"] - after["p1_paddle_x"]
+        assert moved == want_speed, \
+            f"at paddle_speed={want_speed}, one left press should move {want_speed}px, moved {moved}"
 
 
 # ---------------------------------------------------------------------------

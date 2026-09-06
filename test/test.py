@@ -115,7 +115,13 @@ class ReferenceModel:
     PADDLE_HEIGHT = 8
     PADDLE_Y_P1 = 456  # bottom paddle
     PADDLE_Y_P2 = 16   # top paddle
-    PADDLE_SPEED = 1
+    # paddle_speed now scales with the same hit_counter tiers as the ball's
+    # own speed-up (game_logic.sv: paddle_speed = speed4?TOP:speed3?MID:INIT -
+    # tier 1, hit_counter 4-7, has no distinct value of its own and still
+    # maps to INIT). See the paddle_speed property below.
+    PADDLE_SPEED_INIT = 2
+    PADDLE_MID_SPEED = 3
+    PADDLE_TOP_SPEED = 4
     BALL_SIZE = 5  # 5x5 bounding box
 
     INITIAL_BALL_X = 320 - 2  # 318 (pong.v override)
@@ -195,6 +201,15 @@ class ReferenceModel:
         speed3_en = hit_counter >= cls.SPEED3_CNT
         speed4_en = hit_counter >= cls.SPEED4_CNT
         return int(speed2_en) + int(speed3_en) + int(speed4_en)
+
+    @property
+    def paddle_speed(self) -> int:
+        tier = self._tier_for(self.hit_counter)
+        if tier == 3:
+            return self.PADDLE_TOP_SPEED
+        if tier == 2:
+            return self.PADDLE_MID_SPEED
+        return self.PADDLE_SPEED_INIT
 
     def _resolve_paddle_hit(self, segment: int) -> int:
         """One paddle-hit velocity update: bumps hit_counter (saturating),
@@ -426,21 +441,21 @@ class ReferenceModel:
         # paddle always-block isn't gated on game_state at all).
         if p1_left and not p1_right and not self._paddle_at_left_limit(
                 self.p1_paddle_x, self._P1_LEFT_LIMIT_VAL):
-            self.p1_paddle_x -= self.PADDLE_SPEED
+            self.p1_paddle_x -= self.paddle_speed
             if self._paddle_at_left_limit(self.p1_paddle_x, self._P1_LEFT_LIMIT_VAL):
                 events.append(("limit", "p1", "left"))
         elif p1_right and not p1_left and not self._paddle_at_right_limit(self.p1_paddle_x):
-            self.p1_paddle_x += self.PADDLE_SPEED
+            self.p1_paddle_x += self.paddle_speed
             if self._paddle_at_right_limit(self.p1_paddle_x):
                 events.append(("limit", "p1", "right"))
 
         if p2_left and not p2_right and not self._paddle_at_left_limit(
                 self.p2_paddle_x, self._P2_LEFT_LIMIT_VAL):
-            self.p2_paddle_x -= self.PADDLE_SPEED
+            self.p2_paddle_x -= self.paddle_speed
             if self._paddle_at_left_limit(self.p2_paddle_x, self._P2_LEFT_LIMIT_VAL):
                 events.append(("limit", "p2", "left"))
         elif p2_right and not p2_left and not self._paddle_at_right_limit(self.p2_paddle_x):
-            self.p2_paddle_x += self.PADDLE_SPEED
+            self.p2_paddle_x += self.paddle_speed
             if self._paddle_at_right_limit(self.p2_paddle_x):
                 events.append(("limit", "p2", "right"))
 

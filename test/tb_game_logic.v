@@ -38,6 +38,8 @@ module tb_game_logic ();
   wire [1:0] p2_lives;
   wire [0:0] game_state;
   wire ball_out_of_bounds;
+  wire [1:0] speed_tier;
+  wire [2:0] paddle_speed;
 
   game_logic #(
       .PADDLE_WIDTH(4 * 6),
@@ -70,7 +72,9 @@ module tb_game_logic ();
       .ball_bottom_col(ball_bottom_col),
       .ball_right_col(ball_right_col),
       .game_state(game_state),
-      .ball_out_of_bounds(ball_out_of_bounds)
+      .ball_out_of_bounds(ball_out_of_bounds),
+      .speed_tier(speed_tier),
+      .paddle_speed(paddle_speed)
   );
 
 endmodule

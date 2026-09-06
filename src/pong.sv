@@ -25,8 +25,8 @@ module pong
     parameter PADDLE_SEGMENT_WIDTH = 4,
     parameter PADDLE_NUM_SEGMENTS = 6,
     parameter BORDER_WIDTH = 8, // Must be a power of 2
-    parameter INITIAL_BALL_X = 10'd320 - 3'd2,
-    parameter INITIAL_BALL_Y = 9'd340 - 3'd2,
+    parameter INITIAL_BALL_X = 10'd320 - 10'd2,
+    parameter INITIAL_BALL_Y = 9'd340 - 9'd2,
     parameter INITIAL_VEL_X = 4'sd0,
     parameter INITIAL_VEL_Y = 4'sd2
 )(
@@ -249,6 +249,10 @@ module pong
     logic ball_out_of_bounds;
     logic p2_btn_left_real;
     logic p2_btn_right_real;
+    logic [1:0] speed_tier;
+    logic [2:0] paddle_speed;
+    logic ai_move_left;
+    logic ai_move_right;
 
     assign p2_btn_left_real = ai_mode_select ? ai_move_left : p2_btn_left;
     assign p2_btn_right_real = ai_mode_select ? ai_move_right : p2_btn_right;
@@ -284,16 +288,19 @@ module pong
         .ball_bottom_col(ball_bottom_en),
         .ball_right_col(ball_right_en),
         .game_state(game_state),
-        .ball_out_of_bounds(ball_out_of_bounds)
+        .ball_out_of_bounds(ball_out_of_bounds),
+        .speed_tier(speed_tier),
+        .paddle_speed(paddle_speed)
     );
 
-    ai_opponent  #(
+    ai_opponent #(
         .PADDLE_WIDTH(PADDLE_SEGMENT_WIDTH * PADDLE_NUM_SEGMENTS)
     ) ai_opponent (
-        .clk(clk), 
-        .nRst(nRst), 
-        .ball_x(ball_x), 
-        .paddle_2_x(p2_paddle_x), 
+        .clk(clk),
+        .nRst(nRst),
+        .ball_x(ball_x),
+        .paddle_2_x(p2_paddle_x),
+        .paddle_speed(paddle_speed),
         .move_left(ai_move_left),
         .move_right(ai_move_right)
     );
