@@ -96,7 +96,7 @@ module game_logic
     assign speed3 = (speed3_en && ~speed4_en);
     assign speed4 = speed4_en;
 
-    logic [3:0] speed_factor_y;
+    logic [2:0] speed_factor_y;
 
     always_comb begin
         speed_factor_y = speed4 ? TOP_SPEED_Y : speed3 ? SPEED_3_Y : speed2 ? SPEED_2_Y : INIT_SPEED_Y;

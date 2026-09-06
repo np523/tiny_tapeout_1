@@ -46,8 +46,7 @@ module pong
     output logic  vga_hsync,
     output logic  vga_vsync,
     output logic  vblank,
-    output logic  hblank,
-    output logic  sound_out
+    output logic  hblank
     );
 
     
@@ -233,16 +232,6 @@ module pong
         .lives(p2_lives)
     );
 
-    // Sound generator
-    sound_gen sound_gen(
-        .clk(clk),
-        .nRst(nRst),
-        .sound(sound_out),
-        .line_pulse(vga_line_pulse),
-        .frame_pulse(vga_frame_pulse),
-        .high_beep(collision),
-        .low_beep(ball_out_of_bounds)
-    );
     
     // Game logic
     logic [0:0] game_state;

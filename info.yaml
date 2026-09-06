@@ -57,7 +57,7 @@ pinout:
   uio[0]: ""
   uio[1]: "hblank (output)"
   uio[2]: "vblank (output)"
-  uio[3]: "sound (output)"
+  uio[3]: ""
   uio[4]: ""
   uio[5]: ""
   uio[6]: ""
