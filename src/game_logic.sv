@@ -66,12 +66,12 @@ module game_logic
     output logic [0:0] game_state,
     output logic ball_out_of_bounds,
     output logic [1:0] speed_tier,
-    output logic [2:0] paddle_speed
+    output logic [2:0] paddle_speed,
+    output logic end_of_game
 );
 
     logic p1_out_of_lives;
     logic p2_out_of_lives;
-    logic end_of_game;
     logic ball_out_of_bounds_p1;
     logic ball_out_of_bounds_p2;
 

@@ -101,6 +101,8 @@ module pong
     logic draw_p2_paddle;
     logic [5:0] lives_color;
     logic draw_lives;
+    logic [5:0] copper_color;
+    logic draw_copper;
     logic [5:0] starfield_color;
     video_mux video_mux(
         .out(video_out),
@@ -113,7 +115,9 @@ module pong
         .paddle(paddle_color),
         .paddle_en(draw_p1_paddle || draw_p2_paddle),
         .lives(lives_color),
-        .lives_en(draw_lives)
+        .lives_en(draw_lives),
+        .copper(copper_color),
+        .copper_en(draw_copper)
     );
     assign vga_r = video_out[1:0];
     assign vga_g = video_out[3:2];
@@ -226,6 +230,20 @@ module pong
     logic [2:0] paddle_speed;
     logic ai_move_left;
     logic ai_move_right;
+    logic end_of_game;
+
+    logic ball_out_of_bounds_prev;
+    logic point_scored_pulse;
+    logic game_over_pulse;
+    always_ff @(posedge clk or negedge nRst) begin
+        if(!nRst) begin
+            ball_out_of_bounds_prev <= 1'b0;
+        end else begin
+            ball_out_of_bounds_prev <= ball_out_of_bounds;
+        end
+    end
+    assign point_scored_pulse = ball_out_of_bounds && !ball_out_of_bounds_prev && !end_of_game;
+    assign game_over_pulse = ball_out_of_bounds && !ball_out_of_bounds_prev && end_of_game;
 
     assign p2_btn_left_real = ai_mode_select ? ai_move_left : p2_btn_left;
     assign p2_btn_right_real = ai_mode_select ? ai_move_right : p2_btn_right;
@@ -263,7 +281,19 @@ module pong
         .game_state(game_state),
         .ball_out_of_bounds(ball_out_of_bounds),
         .speed_tier(speed_tier),
-        .paddle_speed(paddle_speed)
+        .paddle_speed(paddle_speed),
+        .end_of_game(end_of_game)
+    );
+
+    copper_bars_painter copper_bars_painter (
+        .clk(clk),
+        .nRst(nRst),
+        .frame_pulse(vga_frame_pulse),
+        .point_scored_pulse(point_scored_pulse),
+        .game_over_pulse(game_over_pulse),
+        .vpos(vga_vpos),
+        .active(draw_copper),
+        .color(copper_color)
     );
 
     ai_opponent #(

@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 module starfield_painter #(
-    parameter [5:0] STAR_COLOR = 6'b001111
+    parameter [5:0] STAR_COLOR = 6'b111111
 )(
     input logic clk,
     input logic nRst,

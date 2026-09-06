@@ -31,12 +31,16 @@ module video_mux(
     input logic [5:0] paddle,
     input logic paddle_en,
     input logic [5:0] lives,
-    input logic lives_en
+    input logic lives_en,
+    input logic [5:0] copper,
+    input logic copper_en
     );
     
     always_comb begin
-        if (!in_frame) begin // In blanking. Output black to give the screen something to calibrate on. 
+        if (!in_frame) begin // In blanking. Output black to give the screen something to calibrate on.
             out = 6'b000000;
+        end else if (copper_en) begin
+            out = copper;
         end else if (border_en) begin
             out = border;
         end else if (paddle_en) begin
