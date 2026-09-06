@@ -14,8 +14,8 @@ module ai_opponent #(
     output logic move_right
 );
 
-localparam int BIAS = 1024;
-localparam int CENTRE_ADJ = PADDLE_OFFSET - BALL_OFFSET;
+localparam logic [11:0] BIAS = 12'd1024;
+localparam logic [11:0] CENTRE_ADJ = PADDLE_OFFSET - BALL_OFFSET;
 
 logic [11:0] biased_diff;
 logic [11:0] left_thresh;
@@ -26,12 +26,12 @@ assign biased_diff = (paddle_2_x + (BIAS + CENTRE_ADJ)) - ball_x;
 always_comb begin
     case(paddle_speed)
         3'd4: begin
-            left_thresh  = BIAS + 2;
-            right_thresh = BIAS - 2;
+            left_thresh  = BIAS + 12'd2;
+            right_thresh = BIAS - 12'd2;
         end
         default: begin
-            left_thresh  = BIAS + 1;
-            right_thresh = BIAS - 1;
+            left_thresh  = BIAS + 12'd1;
+            right_thresh = BIAS - 12'd1;
         end
     endcase
 end

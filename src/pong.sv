@@ -28,7 +28,9 @@ module pong
     parameter INITIAL_BALL_X = 10'd320 - 10'd2,
     parameter INITIAL_BALL_Y = 9'd340 - 9'd2,
     parameter INITIAL_VEL_X = 4'sd0,
-    parameter INITIAL_VEL_Y = 4'sd2
+    parameter INITIAL_VEL_Y = 4'sd2,
+    parameter P2_LIVES_OFFSET = 2, 
+    parameter P1_LIVES_OFFSET = 466
 )(
     input logic clk,
     input logic nRst,
@@ -207,7 +209,7 @@ module pong
     // Lives painter
     logic [1:0] p1_lives;
     lives_painter #(
-        .LIVES_Y(474)
+        .LIVES_Y(P1_LIVES_OFFSET)
     ) p1_lives_painter (
         .clk(clk),
         .nRst(nRst),
@@ -220,7 +222,7 @@ module pong
     );
     logic [1:0] p2_lives;
     lives_painter #(
-        .LIVES_Y(2)
+        .LIVES_Y(P2_LIVES_OFFSET)
     ) p2_lives_painter (
         .clk(clk),
         .nRst(nRst),

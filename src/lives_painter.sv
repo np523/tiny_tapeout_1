@@ -2,10 +2,10 @@
 
 module lives_painter #(
     //                          BBGGRR
-    parameter LIVES_COLOR = 6'b111111,
-    parameter LIVES_WIDTH = 24,
-    parameter LIVES_HEIGHT = 9'd4,
-    parameter LIVES_Y =  9'd474,
+    parameter LIVES_COLOR = 6'b000011,
+    parameter LIVES_WIDTH = 16,
+    parameter LIVES_HEIGHT = 9'd14,
+    parameter LIVES_Y =  9'd440,
     parameter SPACING = 16
 ) (
     input logic clk,
@@ -17,6 +17,27 @@ module lives_painter #(
     input logic[8:0] vpos,
     input logic[1:0] lives
     );
+ 
+    
+    function automatic logic [15:0] heart_row(input logic [3:0] r);
+        case (r)
+            4'd0:  heart_row = 16'b0001110000111000;
+            4'd1:  heart_row = 16'b0011111001111100;
+            4'd2:  heart_row = 16'b0111111111111110;
+            4'd3:  heart_row = 16'b1111111111111111;
+            4'd4:  heart_row = 16'b1111111111111111;
+            4'd5:  heart_row = 16'b1111111111111111;
+            4'd6:  heart_row = 16'b1111111111111111;
+            4'd7:  heart_row = 16'b0111111111111110;
+            4'd8:  heart_row = 16'b0011111111111100;
+            4'd9:  heart_row = 16'b0001111111111000;
+            4'd10: heart_row = 16'b0000111111110000;
+            4'd11: heart_row = 16'b0000011111100000;
+            4'd12: heart_row = 16'b0000001111000000;
+            4'd13: heart_row = 16'b0000000110000000;
+            default: heart_row = 16'b0;
+        endcase
+    endfunction
     
     logic [4:0] lives_x;
     logic [1:0] lives_cntr;
@@ -26,13 +47,17 @@ module lives_painter #(
     logic at_lives_end;
     logic at_lives_y_start;
     logic at_lives_y_end;
-    
+    logic [3:0] row_idx;
+    logic [15:0] row_bits;
+
     assign at_x_end = (lives_x == 0);
     assign at_lives_end = (lives_cntr == 0);
     assign at_lives_y_start = (vpos == LIVES_Y);
-    assign at_lives_y_end = (vpos == LIVES_Y + LIVES_HEIGHT - 1);
+    assign at_lives_y_end = (vpos == LIVES_Y + LIVES_HEIGHT);
+    assign row_idx = in_lives_y ? (vpos - LIVES_Y) : 4'd0;
+    assign row_bits = heart_row(row_idx);
 
-    assign in_lives = in_lives_row && in_lives_y;
+    assign in_lives = in_lives_row && in_lives_y && row_bits[lives_x[3:0]];
     assign color = LIVES_COLOR;
 
     // horizontal counters
@@ -71,4 +96,5 @@ module lives_painter #(
             end
         end
     end
+
 endmodule
