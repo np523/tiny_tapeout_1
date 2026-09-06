@@ -20,7 +20,7 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module game_logic 
+module gl_vel 
 #(
     parameter INITIAL_BALL_X = 10'd320 - 3'd2,
     parameter INITIAL_BALL_Y = 9'd452 - 3'd2,

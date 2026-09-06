@@ -20,7 +20,7 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module game_logic 
+module gl_new 
 #(
     parameter INITIAL_BALL_X = 10'd320 - 3'd2,
     parameter INITIAL_BALL_Y = 9'd452 - 3'd2,
@@ -212,14 +212,6 @@ module game_logic
 
     logic signed [3:0] next_velocity_x;
     logic signed [3:0] next_velocity_y;
-
-    logic [2:0] seg_base;
-    logic [2:0] tier_off;
-    logic [3:0] vx_magnitude;
-    assign seg_base = (latched_paddle_segment < 3) ? (3'd3 - latched_paddle_segment)
-                                                   : (latched_paddle_segment - 3'd2);
-    assign tier_off = (speed_factor_x == 2'd3) ? 3'd4 : {1'b0, speed_factor_x};
-    assign vx_magnitude = {1'b0, seg_base} + {1'b0, tier_off};
     always_comb begin
         case(game_state)
             STATE_START: begin
@@ -236,13 +228,76 @@ module game_logic
                     next_velocity_x = INITIAL_VEL_X;
                     next_velocity_y = INITIAL_VEL_Y;
                 end else if (latched_paddle_collision) begin
-                    if(latched_paddle_segment > 5) begin
-                        next_velocity_x = velocity_x;
-                    end else if (latched_paddle_segment < 3) begin
-                        next_velocity_x = -$signed(vx_magnitude);
-                    end else begin
-                        next_velocity_x = $signed(vx_magnitude);
-                    end
+                    case(speed_factor_x)
+                    0:
+                    case(latched_paddle_segment)
+                        3'b000: next_velocity_x = -3;
+                        3'b001: next_velocity_x = -2;
+                        3'b010: next_velocity_x = -1;
+                        3'b011: next_velocity_x = 1;
+                        3'b100: next_velocity_x = 2;
+                        3'b101: next_velocity_x = 3;
+                        // latched_paddle_segment is 3 bits (8 values) but only
+                        // 6 segments exist (PADDLE_NUM_SEGMENTS=6 in pong.sv,
+                        // paddle_painter.v never counts past segment 5) - 110
+                        // and 111 are unreachable in practice, but always_comb
+                        // requires every branch assigned or Yosys infers a
+                        // latch. Same "no change" fallback as the rest of
+                        // this block uses when nothing else matches.
+                        default: next_velocity_x = velocity_x;
+                    endcase
+                    1:
+                    case(latched_paddle_segment)
+                        3'b000: next_velocity_x = -4;
+                        3'b001: next_velocity_x = -3;
+                        3'b010: next_velocity_x = -2;
+                        3'b011: next_velocity_x = 2;
+                        3'b100: next_velocity_x = 3;
+                        3'b101: next_velocity_x = 4;
+                        // latched_paddle_segment is 3 bits (8 values) but only
+                        // 6 segments exist (PADDLE_NUM_SEGMENTS=6 in pong.sv,
+                        // paddle_painter.v never counts past segment 5) - 110
+                        // and 111 are unreachable in practice, but always_comb
+                        // requires every branch assigned or Yosys infers a
+                        // latch. Same "no change" fallback as the rest of
+                        // this block uses when nothing else matches.
+                        default: next_velocity_x = velocity_x;
+                    endcase
+                    2:
+                    case(latched_paddle_segment)
+                        3'b000: next_velocity_x = -5;
+                        3'b001: next_velocity_x = -4;
+                        3'b010: next_velocity_x = -3;
+                        3'b011: next_velocity_x = 3;
+                        3'b100: next_velocity_x = 4;
+                        3'b101: next_velocity_x = 5;
+                        // latched_paddle_segment is 3 bits (8 values) but only
+                        // 6 segments exist (PADDLE_NUM_SEGMENTS=6 in pong.sv,
+                        // paddle_painter.v never counts past segment 5) - 110
+                        // and 111 are unreachable in practice, but always_comb
+                        // requires every branch assigned or Yosys infers a
+                        // latch. Same "no change" fallback as the rest of
+                        // this block uses when nothing else matches.
+                        default: next_velocity_x = velocity_x;
+                    endcase
+                    3:
+                    case(latched_paddle_segment)
+                        3'b000: next_velocity_x = -7;
+                        3'b001: next_velocity_x = -6;
+                        3'b010: next_velocity_x = -5;
+                        3'b011: next_velocity_x = 5;
+                        3'b100: next_velocity_x = 6;
+                        3'b101: next_velocity_x = 7;
+                        // latched_paddle_segment is 3 bits (8 values) but only
+                        // 6 segments exist (PADDLE_NUM_SEGMENTS=6 in pong.sv,
+                        // paddle_painter.v never counts past segment 5) - 110
+                        // and 111 are unreachable in practice, but always_comb
+                        // requires every branch assigned or Yosys infers a
+                        // latch. Same "no change" fallback as the rest of
+                        // this block uses when nothing else matches.
+                        default: next_velocity_x = velocity_x;
+                    endcase
+                    endcase
                     next_velocity_y = (velocity_y < 0) ? speed_factor_y : -speed_factor_y;
 
                 end else if (
@@ -311,6 +366,13 @@ module game_logic
     localparam RIGHT_LIMIT_RAW = (640 - BORDER_WIDTH - PADDLE_WIDTH);
 
     logic [9:0] p1_paddle_state_x;
+    logic [9:0] p2_paddle_state_x;
+    logic [9:0] p1_x_minus, p1_x_plus, p2_x_minus, p2_x_plus;
+    assign p1_x_minus = p1_paddle_state_x - paddle_speed;
+    assign p1_x_plus  = p1_paddle_state_x + paddle_speed;
+    assign p2_x_minus = p2_paddle_state_x - paddle_speed;
+    assign p2_x_plus  = p2_paddle_state_x + paddle_speed;
+
     always_ff @(posedge clk or negedge nRst)
     begin
         if(!nRst) begin
@@ -320,13 +382,9 @@ module game_logic
                 if(ball_out_of_bounds) begin
                     p1_paddle_state_x <= INITIAL_PADDLE_X;
                 end else if (p1_btn_left) begin
-                    p1_paddle_state_x <= (p1_paddle_state_x > P1_LEFT_LIMIT_RAW + paddle_speed)
-                                         ? p1_paddle_state_x - paddle_speed
-                                         : P1_LEFT_LIMIT_RAW;
+                    p1_paddle_state_x <= (p1_x_minus > P1_LEFT_LIMIT_RAW) ? p1_x_minus : P1_LEFT_LIMIT_RAW;
                 end else if (p1_btn_right) begin
-                    p1_paddle_state_x <= (p1_paddle_state_x < RIGHT_LIMIT_RAW - paddle_speed)
-                                         ? p1_paddle_state_x + paddle_speed
-                                         : RIGHT_LIMIT_RAW;
+                    p1_paddle_state_x <= (p1_x_plus < RIGHT_LIMIT_RAW) ? p1_x_plus : RIGHT_LIMIT_RAW;
                 end
             end
         end
@@ -334,7 +392,6 @@ module game_logic
 
     assign p1_paddle_x = p1_paddle_state_x;
 
-    logic [9:0] p2_paddle_state_x;
     always_ff @(posedge clk or negedge nRst)
     begin
         if(!nRst) begin
@@ -344,13 +401,9 @@ module game_logic
                 if(ball_out_of_bounds) begin
                     p2_paddle_state_x <= INITIAL_PADDLE_X;
                 end else if (p2_btn_left) begin
-                    p2_paddle_state_x <= (p2_paddle_state_x > P2_LEFT_LIMIT_RAW + paddle_speed)
-                                         ? p2_paddle_state_x - paddle_speed
-                                         : P2_LEFT_LIMIT_RAW;
+                    p2_paddle_state_x <= (p2_x_minus > P2_LEFT_LIMIT_RAW) ? p2_x_minus : P2_LEFT_LIMIT_RAW;
                 end else if (p2_btn_right) begin
-                    p2_paddle_state_x <= (p2_paddle_state_x < RIGHT_LIMIT_RAW - paddle_speed)
-                                         ? p2_paddle_state_x + paddle_speed
-                                         : RIGHT_LIMIT_RAW;
+                    p2_paddle_state_x <= (p2_x_plus < RIGHT_LIMIT_RAW) ? p2_x_plus : RIGHT_LIMIT_RAW;
                 end
             end
         end

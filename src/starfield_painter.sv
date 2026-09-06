@@ -13,9 +13,7 @@ module starfield_painter #(
     localparam int NUM_STARS = 16;
     localparam logic [9:0] SCREEN_W = 10'd640;
 
-    localparam logic [9:0] SPEED_FAST = 10'd4;
-    localparam logic [9:0] SPEED_MID  = 10'd2;
-    localparam logic [9:0] SPEED_SLOW = 10'd1;
+    localparam logic [9:0] SPEED = 10'd1;
 
     function automatic logic [8:0] row_of(input integer idx);
         case (idx)
@@ -59,45 +57,28 @@ module starfield_painter #(
         endcase
     endfunction
 
-    logic [9:0] scroll_fast;
-    logic [9:0] scroll_mid;
-    logic [9:0] scroll_slow;
+    logic [9:0] scroll;
 
     always_ff @(posedge clk or negedge nRst) begin
         if (!nRst) begin
-            scroll_fast <= 10'd0;
-            scroll_mid  <= 10'd0;
-            scroll_slow <= 10'd0;
+            scroll <= 10'd0;
         end else if (frame_pulse) begin
-            scroll_fast <= (scroll_fast >= SPEED_FAST) ? scroll_fast - SPEED_FAST
-                                                       : scroll_fast + SCREEN_W - SPEED_FAST;
-            scroll_mid  <= (scroll_mid  >= SPEED_MID)  ? scroll_mid  - SPEED_MID
-                                                       : scroll_mid  + SCREEN_W - SPEED_MID;
-            scroll_slow <= (scroll_slow >= SPEED_SLOW) ? scroll_slow - SPEED_SLOW
-                                                       : scroll_slow + SCREEN_W - SPEED_SLOW;
+            scroll <= (scroll >= SPEED) ? scroll - SPEED : scroll + SCREEN_W - SPEED;
         end
     end
 
-    logic [9:0] rel_fast;
-    logic [9:0] rel_mid;
-    logic [9:0] rel_slow;
-
-    assign rel_fast = (hpos >= scroll_fast) ? (hpos - scroll_fast) : (hpos - scroll_fast + SCREEN_W);
-    assign rel_mid  = (hpos >= scroll_mid)  ? (hpos - scroll_mid)  : (hpos - scroll_mid  + SCREEN_W);
-    assign rel_slow = (hpos >= scroll_slow) ? (hpos - scroll_slow) : (hpos - scroll_slow + SCREEN_W);
+    logic [9:0] rel;
+    assign rel = (hpos >= scroll) ? (hpos - scroll) : (hpos - scroll + SCREEN_W);
 
     logic [NUM_STARS-1:0] star_active;
     genvar g;
     generate
         for (g = 0; g < NUM_STARS; g = g + 1) begin : star_cmp
-            if (g < 6) begin : near_layer
+            if (g < 12) begin : big_star
                 assign star_active[g] = ((vpos >> 1) == (row_of(g) >> 1))
-                                     && ((rel_fast >> 1) == (offset_of(g) >> 1));
-            end else if (g < 12) begin : mid_layer
-                assign star_active[g] = ((vpos >> 1) == (row_of(g) >> 1))
-                                     && ((rel_mid >> 1) == (offset_of(g) >> 1));
-            end else begin : far_layer
-                assign star_active[g] = (vpos == row_of(g)) && (rel_slow == offset_of(g));
+                                     && ((rel >> 1) == (offset_of(g) >> 1));
+            end else begin : small_star
+                assign star_active[g] = (vpos == row_of(g)) && (rel == offset_of(g));
             end
         end
     endgenerate

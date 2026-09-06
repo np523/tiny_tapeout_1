@@ -20,7 +20,7 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module game_logic 
+module gl_old 
 #(
     parameter INITIAL_BALL_X = 10'd320 - 3'd2,
     parameter INITIAL_BALL_Y = 9'd452 - 3'd2,
@@ -212,14 +212,6 @@ module game_logic
 
     logic signed [3:0] next_velocity_x;
     logic signed [3:0] next_velocity_y;
-
-    logic [2:0] seg_base;
-    logic [2:0] tier_off;
-    logic [3:0] vx_magnitude;
-    assign seg_base = (latched_paddle_segment < 3) ? (3'd3 - latched_paddle_segment)
-                                                   : (latched_paddle_segment - 3'd2);
-    assign tier_off = (speed_factor_x == 2'd3) ? 3'd4 : {1'b0, speed_factor_x};
-    assign vx_magnitude = {1'b0, seg_base} + {1'b0, tier_off};
     always_comb begin
         case(game_state)
             STATE_START: begin
@@ -236,13 +228,76 @@ module game_logic
                     next_velocity_x = INITIAL_VEL_X;
                     next_velocity_y = INITIAL_VEL_Y;
                 end else if (latched_paddle_collision) begin
-                    if(latched_paddle_segment > 5) begin
-                        next_velocity_x = velocity_x;
-                    end else if (latched_paddle_segment < 3) begin
-                        next_velocity_x = -$signed(vx_magnitude);
-                    end else begin
-                        next_velocity_x = $signed(vx_magnitude);
-                    end
+                    case(speed_factor_x)
+                    0:
+                    case(latched_paddle_segment)
+                        3'b000: next_velocity_x = -3;
+                        3'b001: next_velocity_x = -2;
+                        3'b010: next_velocity_x = -1;
+                        3'b011: next_velocity_x = 1;
+                        3'b100: next_velocity_x = 2;
+                        3'b101: next_velocity_x = 3;
+                        // latched_paddle_segment is 3 bits (8 values) but only
+                        // 6 segments exist (PADDLE_NUM_SEGMENTS=6 in pong.sv,
+                        // paddle_painter.v never counts past segment 5) - 110
+                        // and 111 are unreachable in practice, but always_comb
+                        // requires every branch assigned or Yosys infers a
+                        // latch. Same "no change" fallback as the rest of
+                        // this block uses when nothing else matches.
+                        default: next_velocity_x = velocity_x;
+                    endcase
+                    1:
+                    case(latched_paddle_segment)
+                        3'b000: next_velocity_x = -4;
+                        3'b001: next_velocity_x = -3;
+                        3'b010: next_velocity_x = -2;
+                        3'b011: next_velocity_x = 2;
+                        3'b100: next_velocity_x = 3;
+                        3'b101: next_velocity_x = 4;
+                        // latched_paddle_segment is 3 bits (8 values) but only
+                        // 6 segments exist (PADDLE_NUM_SEGMENTS=6 in pong.sv,
+                        // paddle_painter.v never counts past segment 5) - 110
+                        // and 111 are unreachable in practice, but always_comb
+                        // requires every branch assigned or Yosys infers a
+                        // latch. Same "no change" fallback as the rest of
+                        // this block uses when nothing else matches.
+                        default: next_velocity_x = velocity_x;
+                    endcase
+                    2:
+                    case(latched_paddle_segment)
+                        3'b000: next_velocity_x = -5;
+                        3'b001: next_velocity_x = -4;
+                        3'b010: next_velocity_x = -3;
+                        3'b011: next_velocity_x = 3;
+                        3'b100: next_velocity_x = 4;
+                        3'b101: next_velocity_x = 5;
+                        // latched_paddle_segment is 3 bits (8 values) but only
+                        // 6 segments exist (PADDLE_NUM_SEGMENTS=6 in pong.sv,
+                        // paddle_painter.v never counts past segment 5) - 110
+                        // and 111 are unreachable in practice, but always_comb
+                        // requires every branch assigned or Yosys infers a
+                        // latch. Same "no change" fallback as the rest of
+                        // this block uses when nothing else matches.
+                        default: next_velocity_x = velocity_x;
+                    endcase
+                    3:
+                    case(latched_paddle_segment)
+                        3'b000: next_velocity_x = -7;
+                        3'b001: next_velocity_x = -6;
+                        3'b010: next_velocity_x = -5;
+                        3'b011: next_velocity_x = 5;
+                        3'b100: next_velocity_x = 6;
+                        3'b101: next_velocity_x = 7;
+                        // latched_paddle_segment is 3 bits (8 values) but only
+                        // 6 segments exist (PADDLE_NUM_SEGMENTS=6 in pong.sv,
+                        // paddle_painter.v never counts past segment 5) - 110
+                        // and 111 are unreachable in practice, but always_comb
+                        // requires every branch assigned or Yosys infers a
+                        // latch. Same "no change" fallback as the rest of
+                        // this block uses when nothing else matches.
+                        default: next_velocity_x = velocity_x;
+                    endcase
+                    endcase
                     next_velocity_y = (velocity_y < 0) ? speed_factor_y : -speed_factor_y;
 
                 end else if (

@@ -1,10 +1,12 @@
 `timescale 1ns / 1ps
-module lives_painter #(
+
+
+module lp_orig #(
+    //                          BBGGRR
     parameter LIVES_COLOR = 6'b000011,
     parameter LIVES_WIDTH = 16,
     parameter LIVES_HEIGHT = 9'd14,
-    parameter P1_LIVES_Y = 9'd466,
-    parameter P2_LIVES_Y = 9'd2,
+    parameter LIVES_Y =  9'd440,
     parameter SPACING = 16
 ) (
     input logic clk,
@@ -14,10 +16,10 @@ module lives_painter #(
     input logic hactive,
     input logic[9:0] hpos,
     input logic[8:0] vpos,
-    input logic[1:0] p1_lives,
-    input logic[1:0] p2_lives
+    input logic[1:0] lives
     );
-
+ 
+    
     function automatic logic [15:0] heart_row(input logic [3:0] r);
         case (r)
             4'd0:  heart_row = 16'b0001110000111000;
@@ -37,34 +39,31 @@ module lives_painter #(
             default: heart_row = 16'b0;
         endcase
     endfunction
-
+    
     logic [4:0] lives_x;
     logic [1:0] lives_cntr;
     logic in_lives_row;
-    logic in_p1_y;
-    logic in_p2_y;
     logic in_lives_y;
     logic at_x_end;
     logic at_lives_end;
-    logic use_p1;
-    logic [1:0] active_lives;
+    logic at_lives_y_start;
+    logic at_lives_y_end;
     logic [3:0] row_idx;
     logic [15:0] row_bits;
 
     assign at_x_end = (lives_x == 0);
     assign at_lives_end = (lives_cntr == 0);
-    // The two bands sit at opposite ends of the frame, so a single midpoint
-    // test picks the right player for both the current line and the next one
-    // (which is what the blanking-time lives_cntr load actually needs).
-    assign use_p1 = (vpos > 9'd240);
-    assign active_lives = use_p1 ? p1_lives : p2_lives;
-    assign in_lives_y = in_p1_y || in_p2_y;
-    assign row_idx = in_p1_y ? (vpos - P1_LIVES_Y) : (vpos - P2_LIVES_Y);
+    assign at_lives_y_start = (vpos == LIVES_Y);
+    assign at_lives_y_end = (vpos == LIVES_Y + LIVES_HEIGHT);
+    assign row_idx = in_lives_y ? (vpos - LIVES_Y) : 4'd0;
     assign row_bits = heart_row(row_idx);
+
     assign in_lives = in_lives_row && in_lives_y && row_bits[lives_x[3:0]];
     assign color = LIVES_COLOR;
 
-    always_ff @(posedge clk or negedge nRst) begin
+    // horizontal counters
+    always_ff @(posedge clk or negedge nRst)
+    begin
         if(!nRst) begin
             lives_x <= SPACING - 1;
             in_lives_row <= 0;
@@ -73,7 +72,7 @@ module lives_painter #(
             if(!hactive) begin
                 lives_x <= SPACING - 1;
                 in_lives_row <= 0;
-                lives_cntr <= active_lives;
+                lives_cntr <= lives;
             end else if(at_x_end) begin
                 lives_x <= in_lives_row ? SPACING - 1 : LIVES_WIDTH - 1;
                 in_lives_row <= !in_lives_row && !at_lives_end;
@@ -86,15 +85,17 @@ module lives_painter #(
         end
     end
 
-    always_ff @(posedge clk or negedge nRst) begin
+    always_ff @(posedge clk or negedge nRst)
+    begin
         if(!nRst) begin
-            in_p1_y <= 0;
-            in_p2_y <= 0;
+            in_lives_y <= 0;
         end else begin
-            if(vpos == P1_LIVES_Y)                     in_p1_y <= 1;
-            else if(vpos == P1_LIVES_Y + LIVES_HEIGHT) in_p1_y <= 0;
-            if(vpos == P2_LIVES_Y)                     in_p2_y <= 1;
-            else if(vpos == P2_LIVES_Y + LIVES_HEIGHT) in_p2_y <= 0;
+            if(at_lives_y_start) begin
+                in_lives_y <= 1;
+            end else if(at_lives_y_end) begin
+                in_lives_y <= 0;
+            end
         end
     end
+
 endmodule

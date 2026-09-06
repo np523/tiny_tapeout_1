@@ -1,5 +1,5 @@
 `timescale 1ns / 1ps
-module lives_painter #(
+module lp_shared #(
     parameter LIVES_COLOR = 6'b000011,
     parameter LIVES_WIDTH = 16,
     parameter LIVES_HEIGHT = 9'd14,

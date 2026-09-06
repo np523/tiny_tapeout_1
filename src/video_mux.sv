@@ -28,14 +28,10 @@ module video_mux(
     input logic border_en,
     input logic [5:0] ball,
     input logic ball_en,
-    input logic [5:0] p1_paddle,
-    input logic p1_paddle_en,
-    input logic [5:0] p1_lives,
-    input logic p1_lives_en,
-    input logic [5:0] p2_paddle,
-    input logic p2_paddle_en,
-    input logic [5:0] p2_lives,
-    input logic p2_lives_en
+    input logic [5:0] paddle,
+    input logic paddle_en,
+    input logic [5:0] lives,
+    input logic lives_en
     );
     
     always_comb begin
@@ -43,16 +39,12 @@ module video_mux(
             out = 6'b000000;
         end else if (border_en) begin
             out = border;
-        end else if (p1_paddle_en) begin
-            out = p1_paddle;
-        end else if (p2_paddle_en) begin
-            out = p2_paddle;
+        end else if (paddle_en) begin
+            out = paddle;
         end else if (ball_en) begin
             out = ball;
-        end else if (p1_lives_en) begin
-            out = p1_lives;
-        end else if (p2_lives_en) begin
-            out = p2_lives;
+        end else if (lives_en) begin
+            out = lives;
         end else begin
             out = background;
         end

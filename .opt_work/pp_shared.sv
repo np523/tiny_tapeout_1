@@ -1,5 +1,5 @@
 `timescale 1ns / 1ps
-module paddle_painter #(
+module pp_shared #(
     parameter PADDLE_COLOR = 6'b111111,
     parameter PADDLE_SEGMENT_WIDTH = 8,
     parameter PADDLE_NUM_SEGMENTS = 6,

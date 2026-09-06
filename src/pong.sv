@@ -96,14 +96,11 @@ module pong
     logic draw_border;
     logic [5:0] ball_color;
     logic draw_ball;
-    logic [5:0] p1_paddle_color;
+    logic [5:0] paddle_color;
     logic draw_p1_paddle;
-    logic [5:0] p2_paddle_color;
     logic draw_p2_paddle;
-    logic [5:0] p1_lives_color;
-    logic draw_p1_lives;
-    logic [5:0] p2_lives_color;
-    logic draw_p2_lives;
+    logic [5:0] lives_color;
+    logic draw_lives;
     logic [5:0] starfield_color;
     video_mux video_mux(
         .out(video_out),
@@ -113,14 +110,10 @@ module pong
         .border_en(draw_border),
         .ball(ball_color),
         .ball_en(draw_ball),
-        .p1_paddle(p1_paddle_color),
-        .p1_paddle_en(draw_p1_paddle),
-        .p2_paddle(p2_paddle_color),
-        .p2_paddle_en(draw_p2_paddle),
-        .p1_lives(p1_lives_color),
-        .p1_lives_en(draw_p1_lives),
-        .p2_lives(p2_lives_color),
-        .p2_lives_en(draw_p2_lives)
+        .paddle(paddle_color),
+        .paddle_en(draw_p1_paddle || draw_p2_paddle),
+        .lives(lives_color),
+        .lives_en(draw_lives)
     );
     assign vga_r = video_out[1:0];
     assign vga_g = video_out[3:2];
@@ -170,79 +163,57 @@ module pong
         .display_active(vga_active)
     );
     
-    // Paddle painter
+    // Paddle painter (one shared instance - the two paddles sit in opposite
+    // halves of the frame, so they are never active on the same scanline)
     logic [9:0] p1_paddle_x;
-    logic [2:0] p1_paddle_segment;
-    paddle_painter #(
-        .PADDLE_Y(9'd456),
-        .PADDLE_SEGMENT_WIDTH(PADDLE_SEGMENT_WIDTH),
-        .PADDLE_NUM_SEGMENTS(PADDLE_NUM_SEGMENTS)
-    ) p1_paddle_painter (
-        .clk(clk),
-        .nRst(nRst),
-        .in_paddle(draw_p1_paddle),
-        .color(p1_paddle_color),
-        .x(p1_paddle_x),
-        .hpos(vga_hpos),
-        .vpos(vga_vpos),
-        .paddle_segment(p1_paddle_segment)
-    );
     logic [9:0] p2_paddle_x;
-    logic [2:0] p2_paddle_segment;
+    logic [2:0] paddle_segment;
     paddle_painter #(
-        .PADDLE_Y('d16),
+        .P1_PADDLE_Y(9'd456),
+        .P2_PADDLE_Y('d16),
         .PADDLE_SEGMENT_WIDTH(PADDLE_SEGMENT_WIDTH),
         .PADDLE_NUM_SEGMENTS(PADDLE_NUM_SEGMENTS)
-    ) p2_paddle_painter (
+    ) paddle_painter (
         .clk(clk),
         .nRst(nRst),
-        .in_paddle(draw_p2_paddle),
-        .color(p2_paddle_color),
-        .x(p2_paddle_x),
+        .in_p1_paddle(draw_p1_paddle),
+        .in_p2_paddle(draw_p2_paddle),
+        .color(paddle_color),
+        .p1_x(p1_paddle_x),
+        .p2_x(p2_paddle_x),
         .hpos(vga_hpos),
         .vpos(vga_vpos),
-        .paddle_segment(p2_paddle_segment)
+        .paddle_segment(paddle_segment)
     );
-    
+
     logic wall_collision;
     logic p1_paddle_collision;
     logic p2_paddle_collision;
     logic paddle_collision;
-    logic [2:0] paddle_segment;
     logic collision;
     assign wall_collision = draw_border && draw_ball;
     assign p1_paddle_collision = draw_p1_paddle && draw_ball;
     assign p2_paddle_collision = draw_p2_paddle && draw_ball;
     assign paddle_collision = p1_paddle_collision || p2_paddle_collision;
-    assign paddle_segment = p1_paddle_collision ? p1_paddle_segment : p2_paddle_segment;
     assign collision = wall_collision || paddle_collision;
 
-    // Lives painter
+    // Lives painter (one shared instance - the two bands are 464 rows apart,
+    // so they are never active on the same scanline)
     logic [1:0] p1_lives;
-    lives_painter #(
-        .LIVES_Y(P1_LIVES_OFFSET)
-    ) p1_lives_painter (
-        .clk(clk),
-        .nRst(nRst),
-        .in_lives(draw_p1_lives),
-        .color(p1_lives_color),
-        .hactive(vga_hactive),
-        .hpos(vga_hpos),
-        .vpos(vga_vpos),
-        .lives(p1_lives)
-    );
     logic [1:0] p2_lives;
     lives_painter #(
-        .LIVES_Y(P2_LIVES_OFFSET)
-    ) p2_lives_painter (
+        .P1_LIVES_Y(P1_LIVES_OFFSET),
+        .P2_LIVES_Y(P2_LIVES_OFFSET)
+    ) lives_painter (
         .clk(clk),
         .nRst(nRst),
-        .in_lives(draw_p2_lives),
-        .color(p2_lives_color),
+        .in_lives(draw_lives),
+        .color(lives_color),
         .hactive(vga_hactive),
         .hpos(vga_hpos),
         .vpos(vga_vpos),
-        .lives(p2_lives)
+        .p1_lives(p1_lives),
+        .p2_lives(p2_lives)
     );
 
     
