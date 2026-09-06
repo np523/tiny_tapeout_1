@@ -6,7 +6,7 @@ SIM ?= verilator
 FST ?= -fst # Use more efficient FST format
 TOPLEVEL_LANG ?= verilog
 SRC_DIR = $(PWD)/../src
-PROJECT_SOURCES = ball_painter.sv border_painter.sv game_logic.sv lives_painter.sv paddle_painter.sv pong.sv sound_gen.sv synchronizer.sv tt_um_np523_pong.sv vga_timing.sv video_mux.sv
+PROJECT_SOURCES = ai_opponent.sv ball_painter.sv border_painter.sv game_logic.sv lives_painter.sv paddle_painter.sv pong.sv starfield_painter.sv synchronizer.sv tt_um_np523_pong.sv vga_timing.sv video_mux.sv
 
 ifneq ($(GATES),yes)
 

@@ -104,10 +104,11 @@ module pong
     logic draw_p1_lives;
     logic [5:0] p2_lives_color;
     logic draw_p2_lives;
+    logic [5:0] starfield_color;
     video_mux video_mux(
         .out(video_out),
         .in_frame(vga_active),
-        .background(6'b000000),
+        .background(starfield_color),
         .border(border_color),
         .border_en(draw_border),
         .ball(ball_color),
@@ -125,6 +126,16 @@ module pong
     assign vga_g = video_out[3:2];
     assign vga_b = video_out[5:4];
     
+    // Starfield background
+    starfield_painter starfield_painter(
+        .clk(clk),
+        .nRst(nRst),
+        .frame_pulse(vga_frame_pulse),
+        .hpos(vga_hpos),
+        .vpos(vga_vpos),
+        .color(starfield_color)
+    );
+
     // Border generator
     border_painter #(
         .BORDER_WIDTH(BORDER_WIDTH)
