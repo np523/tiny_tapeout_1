@@ -10,7 +10,7 @@ module starfield_painter #(
     output logic [5:0] color
 );
 
-    localparam int NUM_STARS = 16;
+    localparam int NUM_STARS = 8;
     localparam logic [9:0] SCREEN_W = 10'd640;
 
     localparam logic [9:0] SPEED = 10'd1;
@@ -74,7 +74,7 @@ module starfield_painter #(
     genvar g;
     generate
         for (g = 0; g < NUM_STARS; g = g + 1) begin : star_cmp
-            if (g < 12) begin : big_star
+            if (g < 6) begin : big_star
                 assign star_active[g] = ((vpos >> 1) == (row_of(g) >> 1))
                                      && ((rel >> 1) == (offset_of(g) >> 1));
             end else begin : small_star
