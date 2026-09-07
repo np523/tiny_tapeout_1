@@ -1,5 +1,5 @@
 `timescale 1ns / 1ps
-module copper_bars_painter #(
+module cb_fix #(
     parameter [7:0] DURATION_POINT    = 8'd60,
     parameter [7:0] DURATION_GAMEOVER = 8'd180
 )(
