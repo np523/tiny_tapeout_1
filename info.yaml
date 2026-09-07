@@ -20,7 +20,6 @@ project:
     - "ai_opponent.sv"
     - "ball_painter.sv"
     - "border_painter.sv"
-    - "copper_bars_painter.sv"
     - "game_logic.sv"
     - "lives_painter.sv"
     - "paddle_painter.sv"

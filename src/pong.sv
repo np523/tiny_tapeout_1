@@ -279,16 +279,9 @@ module pong
         .end_of_game(end_of_game)
     );
 
-    copper_bars_painter copper_bars_painter (
-        .clk(clk),
-        .nRst(nRst),
-        .frame_pulse(vga_frame_pulse),
-        .point_scored_pulse(point_scored_pulse),
-        .game_over_pulse(game_over_pulse),
-        .vpos(vga_vpos),
-        .active(draw_copper),
-        .color(copper_color)
-    );
+    // Copper bars also disabled in this minimal variant.
+    assign draw_copper = 1'b0;
+    assign copper_color = 6'b000000;
 
     ai_opponent #(
         .PADDLE_WIDTH(PADDLE_SEGMENT_WIDTH * PADDLE_NUM_SEGMENTS)
