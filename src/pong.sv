@@ -123,15 +123,9 @@ module pong
     assign vga_g = video_out[3:2];
     assign vga_b = video_out[5:4];
     
-    // Starfield background
-    starfield_painter starfield_painter(
-        .clk(clk),
-        .nRst(nRst),
-        .frame_pulse(vga_frame_pulse),
-        .hpos(vga_hpos),
-        .vpos(vga_vpos),
-        .color(starfield_color)
-    );
+    // Starfield disabled in this reduced-congestion variant: the background
+    // is a flat black, so synthesis removes the painter entirely.
+    assign starfield_color = 6'b000000;
 
     // Border generator
     border_painter #(

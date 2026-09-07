@@ -25,7 +25,6 @@ project:
     - "lives_painter.sv"
     - "paddle_painter.sv"
     - "pong.sv"
-    - "starfield_painter.sv"
     - "synchronizer.sv"
     - "tt_um_np523_pong.sv"
     - "vga_timing.sv"
