@@ -21,7 +21,6 @@ GL_TEST = os.environ.get("GATES") == "yes"
 STARFIELD_MODEL_STALE = True
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, RisingEdge, ReadOnly
-from PIL import Image
 
 errors = []
 
@@ -29,6 +28,10 @@ errors = []
 def save_png(frame_levels: np.ndarray, path: str):
     """frame_levels holds raw 2-bit-per-channel values (0-3); scale to
     0-255 for a viewable PNG."""
+    # Imported lazily: Pillow is only needed for the optional screenshot
+    # feature (make PLUSARGS=+screenshot), and CI does not install it.
+    from PIL import Image
+
     bytes_frame = (frame_levels.astype(np.uint16) * 85).astype(np.uint8)
     Image.fromarray(bytes_frame, mode="RGB").save(path)
 
