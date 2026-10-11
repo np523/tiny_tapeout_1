@@ -41,7 +41,11 @@ if [ -z "$LIB" ]; then
     exit 1
 fi
 
-docker run --rm -i --user "$(id -u)":"$(id -g)" \
+# NB: deliberately not passing --user. Docker maps the host uid such that
+# $HOME appears root-owned inside the container, so a constrained uid cannot
+# traverse a 750 home directory. This script only reads sources and prints to
+# stdout, so running as the container's default user creates no stray files.
+docker run --rm -i \
     -v "$MOUNT_ROOT":"$MOUNT_ROOT" \
     -e PDK_ROOT="$MOUNT_ROOT/.ciel" \
     ghcr.io/librelane/librelane:3.0.5 \
